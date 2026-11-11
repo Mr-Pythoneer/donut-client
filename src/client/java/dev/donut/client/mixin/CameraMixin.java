@@ -22,7 +22,7 @@ abstract class CameraMixin {
         if (!FreecamController.enabled()) return;
         FreecamController freecam = FreecamController.getInstance();
         setPosition(freecam.interpolatedPosition(partialTick));
-        setRotation(freecam.yaw(), freecam.pitch());
+        setRotation(freecam.renderYaw(partialTick), freecam.renderPitch(partialTick));
         detached = true;
     }
 }

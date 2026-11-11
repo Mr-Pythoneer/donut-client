@@ -74,7 +74,7 @@ public final class DonutClient implements ClientModInitializer {
         });
         FullbrightController fullbright = new FullbrightController(config);
         ClientTickEvents.START_CLIENT_TICK.register(fullbright::tick);
-        FreecamController freecam = new FreecamController(config);
+        FreecamController freecam = new FreecamController(config, this::save);
         ClientTickEvents.START_CLIENT_TICK.register(freecam::tick);
         FlyController fly = new FlyController(config);
         ClientTickEvents.START_CLIENT_TICK.register(fly::tick);
@@ -199,6 +199,8 @@ public final class DonutClient implements ClientModInitializer {
             AutoBuilderHud.render(graphics, client.font, client.getWindow().getGuiScaledHeight(), config);
         });
 
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "freecam_readout"), (graphics, delta) ->
+                dev.donut.client.gui.FreecamHud.render(graphics, config, freecam));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "progress_bar"), (graphics, delta) -> {
             Minecraft client = Minecraft.getInstance();
             if (!config.progressBar.enabled || client.player == null || client.screen != null || client.options.hideGui) return;
@@ -213,7 +215,7 @@ public final class DonutClient implements ClientModInitializer {
                 BlockEspHud.render(graphics, config, blockEsp));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "staff_detector"), (graphics, delta) ->
                 dev.donut.client.gui.StaffDetectorHud.render(graphics, config, staffDetector));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disable(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
             fullbright.close();

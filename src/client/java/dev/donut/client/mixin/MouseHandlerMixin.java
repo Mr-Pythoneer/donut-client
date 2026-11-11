@@ -20,6 +20,9 @@ abstract class MouseHandlerMixin {
 
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
     private void donut$preventHotbarScroll(long window, double horizontal, double vertical, CallbackInfo ci) {
-        if (FreecamController.enabled() && Minecraft.getInstance().screen == null) ci.cancel();
+        if (!FreecamController.enabled() || Minecraft.getInstance().screen != null) return;
+        // The wheel adjusts camera speed instead of changing the player's hotbar slot.
+        FreecamController.getInstance().scroll(vertical);
+        ci.cancel();
     }
 }

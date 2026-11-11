@@ -460,7 +460,7 @@ public final class DonutScreen extends Screen {
                 || (tab == 3 && index != 3 && index != 6) || (tab == 4 && (index < 7 || index > 9))) return false;
         if (tab == 1 && !favorite(index)) return false;
         String words = switch (index) {
-            case 2 -> "freecam free camera fly perspective spectator";
+            case 2 -> "freecam free camera fly perspective spectator scroll speed smooth follow player look at target coordinates";
             case 4 -> "base finder basefinder chunk finder chunkfinder geode amethyst activity kelp cave vines bamboo cocoa bee nest";
             case 5 -> "fullbright full bright brightness gamma night dark lighting";
             case 6 -> "fly flight vanilla singleplayer single player multiplayer multi player lan server movement creative";
@@ -1126,14 +1126,35 @@ public final class DonutScreen extends Screen {
     private void drawFreecamSettings(GuiGraphics g, int ignored) {
         var value = config.freecam;
         section(g, "Movement", 0);
-        slider(g, "freecamSpeed", "Camera speed", 0, () -> value.speed, v -> value.speed = v, .1, 5, .1, " blocks/tick");
+        slider(g, "freecamSpeed", "Camera speed", 0, () -> value.speed, v -> value.speed = v, .1, dev.donut.client.config.FreecamSettings.MAX_SPEED, .1, " blocks/tick");
         slider(g, "freecamBoost", "Sprint boost", 0, () -> value.boostMultiplier, v -> value.boostMultiplier = v, 1, 10, .1, "x");
+        slider(g, "freecamSmoothing", "Smoothing", 0, () -> value.smoothing, v -> value.smoothing = v, 0, .95, .05, "%");
+        help(g, "0% moves instantly. Higher values ease acceleration and stopping.");
+        settingToggle(g, "freecamScroll", "Scroll wheel adjusts speed", 0, () -> value.scrollAdjustsSpeed, () -> value.scrollAdjustsSpeed = !value.scrollAdjustsSpeed);
+        settingToggle(g, "freecamReadout", "Speed / status readout", 0, () -> value.speedReadout, () -> value.speedReadout = !value.speedReadout);
+        settingToggle(g, "freecamResume", "Resume last camera position", 0, () -> value.resumeLastPosition, () -> value.resumeLastPosition = !value.resumeLastPosition);
+        help(g, value.resumeLastPosition ? "Re-enabling continues from the last camera pose in this world."
+                : "Re-enabling starts at your eyes. Disabling always returns the view to you.");
+        section(g, "Camera helpers", 0);
+        settingToggle(g, "freecamFollow", "Follow nearest player", 0, () -> value.followNearestPlayer, () -> value.followNearestPlayer = !value.followNearestPlayer);
+        if (value.followNearestPlayer) {
+            slider(g, "freecamFollowRange", "Follow range", 0, () -> value.followRange, v -> value.followRange = (int) v, 8, 128, 1, " blocks");
+            help(g, "Keeps the camera's offset from the nearest other player your client can see. Movement keys nudge the offset.");
+        }
+        settingToggle(g, "freecamLookAt", "Look at target", 0, () -> value.lookAtTarget, () -> value.lookAtTarget = !value.lookAtTarget);
+        button(g, "m2.freecamTarget", "Set target " + value.targetX + ", " + value.targetY + ", " + value.targetZ, rowX, settingsCursor, rowW, s(34), () -> {
+            flush(); minecraft.setScreen(new FreecamTargetScreen(this, config, save));
+        });
+        settingsCursor += s(44);
+        if (value.lookAtTarget) help(g, "The camera keeps facing the target block; mouse look is paused.");
         section(g, "Your controls", 0);
         controlHint(g, "Move", keyName(minecraft.options.keyUp) + " / " + keyName(minecraft.options.keyLeft)
                 + " / " + keyName(minecraft.options.keyDown) + " / " + keyName(minecraft.options.keyRight), 0);
         controlHint(g, "Up / down", keyName(minecraft.options.keyJump) + " / " + keyName(minecraft.options.keyShift), 0);
         controlHint(g, "Speed boost", keyName(minecraft.options.keySprint), 0);
+        if (value.scrollAdjustsSpeed) controlHint(g, "Speed", "Scroll wheel", 0);
         help(g, canUseFreecam() ? "Close this menu to fly. Disable to return." : "Join a world to enable Freecam.");
+        help(g, "Camera only: your player, its position and the server never move. You only see chunks loaded around your player.");
     }
 
     private String keyName(KeyMapping key) { return key.getTranslatedKeyMessage().getString(); }
