@@ -1,6 +1,6 @@
 # Donut Client
 
-A client-side Fabric mod for Minecraft Java 1.21.11 with Staff Detector, BlockESP, Storage ESP, Waypoints, Coordinates, Zoom, Durability Alert, Sound Detector, Base Finder, Amethyst Scanner, Light Debug, Fullbright, Freecam, Fly, AutoBuilder, streaming Progress Bar, Name Hider and Hotbar modules, module keybinds, and a minimal HUD.
+A client-side Fabric mod for Minecraft Java 1.21.11 with Staff Detector, BlockESP, Storage ESP, Waypoints, Coordinates, Zoom, Durability Alert, Sound Detector, Base Finder, Amethyst Scanner, Light Debug, Fullbright, Freecam, Fly, AutoBuilder, Auto Miner, streaming Progress Bar, Name Hider and Hotbar modules, module keybinds, and a minimal HUD.
 
 **Staff Detector** in **Visual** observes known staff UUIDs, reported spectator mode, nearby invisible entities and optional repeated `/msg` completion discrepancies. Add usernames or UUIDs through **Staff list / evidence** for the current server. The module starts disabled, preserves uncertainty about hidden presence, and supports a presence HUD, bounded evidence history, chat alerts, Favorites and an assignable shortcut. It cannot establish who is watching you or recover completely filtered vanish data. See [the Staff Detector guide](docs/staff-detector.md).
 
@@ -15,6 +15,8 @@ A client-side Fabric mod for Minecraft Java 1.21.11 with Staff Detector, BlockES
 - **Durability Alert** warns, with a local chime, when your held items or armor run low.
 
 See [the quality-of-life guide](docs/qol-features.md).
+
+**Auto Miner** finds ores in the chunks your client already has, walks to them and mines them at normal speed and reach. It turns your real view at a capped rate and breaks only the block under the crosshair, using the game's own destroy calls. It sends no custom packets and never teleports. It starts disabled, targets only exposed ores unless **Include buried ores** is on (then it digs a 1×2 staircase tunnel), and skips ores next to lava or water. It pauses for menus, Freecam, low health and your own movement keys. It stops and switches itself off on disconnect, death, dimension change or a full inventory. Toggle it with **Toggle Auto Miner** in Minecraft Controls. Automated mining is against the rules on many servers; check before using it. See [the Auto Miner guide](docs/auto-miner.md).
 
 ## Install
 

@@ -8,6 +8,28 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-11 (Phase 4 Auto Miner)
+
+- On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build test --no-daemon` passed with **223 unit tests** (44 classes), and `runClientGameTest -PautoMinerTestsOnly=true --no-daemon` passed AutoMinerGameTest and ModuleKeybindGameTest. No EULA flag was created or changed.
+- Unit tests (`AutoMinerRulesTest`, `AutoMinerSettingsTest`):
+  - Every ore and its deepslate variant map to one kind (lit redstone too); stone, deepslate, ore blocks, raw blocks, gilded blackstone, amethyst and lava are not ores.
+  - Exposure: buried in stone is not exposed; air or cave air on any of the six faces, or glass, exposes it; a neighbouring ore does not.
+  - Fluid hazards: lava or water on a face, water in the block itself, and a waterlogged neighbour count; a diagonal one does not.
+  - Targets sort nearest first with stable ties.
+  - Tool choice: fastest tool that can harvest; protected tools at or below the reserve are skipped (inclusive); items without durability are never protected; ties keep the held slot.
+  - Turning is capped per tick, takes the short way across ±180°, clamps pitch, and leaves yaw alone when looking straight up or down.
+  - Tunnel steps are one horizontal step (level, up or down), clear top first, and never include the block under the feet. Unsafe steps are rejected: lava/water behind a wall, overhead or under the floor; bedrock; chests; gravel above; a drop over 3 blocks; no floor.
+  - Settings: start disabled with the documented defaults (from `{}`, `null` and `ores: null`), survive JSON, and clamp range/health/reserve/tunnel/turn speed (NaN and infinity included). Unknown ore keys are dropped, missing ones filled and null ones reset to the default.
+- Runtime suite (`AutoMinerGameTest`), through the production controller in a disposable survival world with a diamond pickaxe:
+  - Exposed-only: it skips the nearer diamond ore with lava beside it ("next to lava or water"), ignores a diamond ore buried in stone, walks over to the exposed one and mines it with the pickaxe selected. Nothing else is mined over a following fresh sweep.
+  - Opening the inventory while it walks pauses it ("menu open"). The player is handed back (keyboard input, not destroying) and does not move. Closing resumes it.
+  - Pressing forward mid-break on ancient debris pauses it ("manual control") and aborts the break. It stays paused for the idle delay, then resumes and starts the break again.
+  - Switching it off mid-break stops it: not destroying, keyboard input restored, no keys held, original hotbar slot back, the debris intact.
+  - With buried ores on, it finds no visible standing spot, tunnels a 1×2 staircase down to the buried ore (6 blocks) and mines it. The block under the starting position is untouched.
+  - The player never moves 1 block or more in a single tick while it runs (no teleports).
+  - Closing the world while it is running stops it, disables the module and releases input.
+  - Screenshots: `auto-miner-01-mining`, `auto-miner-02-tunnel`.
+
 ## Verified on 2026-11-10 (Phase 3 quality-of-life, blue donut)
 
 - On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build --no-daemon` passed with **209 unit tests**, and `runClientGameTest -PqolTestsOnly=true --no-daemon` passed QualityOfLifeGameTest, QualityOfLifeGuiGameTest and ModuleKeybindGameTest. No EULA flag was created or changed.
