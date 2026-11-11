@@ -94,11 +94,12 @@ public final class NameHiderGameTest implements FabricClientGameTest {
         GuiTestInput.click(context, "tab0");
         GuiTestInput.click(context, "search");
         GuiTestInput.type(context, "namehider");
-        require(!GuiTestInput.visible(context, "module8"), "Name Hider appeared in Visual modules");
+        // Search spans every category: a Streaming module is found even from the Visual tab.
+        require(GuiTestInput.visible(context, "module8"), "Global search did not find Name Hider from the Visual tab");
         GuiTestInput.clickWithFade(context, "tab3", "contentProgress");
         GuiTestInput.click(context, "search");
         GuiTestInput.type(context, "privacy");
-        require(!GuiTestInput.visible(context, "module8"), "Name Hider appeared in Blatant modules");
+        require(GuiTestInput.visible(context, "module8"), "Searching a setting name (privacy) did not find Name Hider from Blatant");
         GuiTestInput.clickWithFade(context, "tab4", "contentProgress");
         GuiTestInput.assertModuleRows(context, 7, 8);
         GuiTestInput.assertSelectionAnimation(context, MODULE);

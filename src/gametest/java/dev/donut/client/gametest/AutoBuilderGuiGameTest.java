@@ -79,7 +79,7 @@ public final class AutoBuilderGuiGameTest implements FabricClientGameTest {
             GuiTestInput.click(context, "tab3");
             GuiTestInput.click(context, "search"); GuiTestInput.type(context, "stone");
             require(!GuiTestInput.visible(context, "module0") && !GuiTestInput.visible(context, "module3"),
-                    "Blatant search must remain restricted to its category");
+                    "An unrelated search term matched modules");
             GuiTestInput.click(context, "tab3");
             GuiTestInput.click(context, "keybind3");
             context.getInput().pressKey(GLFW.GLFW_KEY_F7);
