@@ -29,7 +29,8 @@
     "StaffDetectorPacketMixin",
     "SoundEntityEventAccessor",
     "SoundDetectorLocalMixin",
-    "SoundDetectorClientSoundMixin"
+    "SoundDetectorClientSoundMixin",
+    "AutoMinerInputMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,6 +1,7 @@
 package dev.donut.client.autobuild;
 
 import java.util.*;
+import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
@@ -21,6 +22,8 @@ public final class BuilderNavigator {
     private Vec3 lastPosition;
     private BlockPos target;
     private final Set<BuilderPathfinder.Cell> rejectedGoals = new HashSet<>();
+    /** Degrees per tick; infinite (the default, used by AutoBuilder) snaps straight to the walking direction. */
+    private float turnLimit = Float.POSITIVE_INFINITY;
 
     private static final class SteeringInput extends ClientInput {
         boolean forward, jump, sneak;
@@ -51,13 +54,36 @@ public final class BuilderNavigator {
         replan();
     }
     public int routeLength() { return Math.max(0, route.size() - index); }
+    /** Turn gradually while walking, at most this many degrees per tick; 0 or less restores instant turns. */
+    public void setTurnLimit(float degreesPerTick) {
+        turnLimit = Float.isFinite(degreesPerTick) && degreesPerTick > 0 ? degreesPerTick : Float.POSITIVE_INFINITY;
+    }
+    /** True while this navigator has replaced the player's input with its own steering. */
+    public boolean holding(Minecraft client) { return client.player != null && client.player.input == steering; }
+
+    /** Like {@link #moveTo(Minecraft, BlockPos)}, but only stops in cells that {@code stand} also accepts. */
+    public Result moveTo(Minecraft client, BlockPos destination, Predicate<BlockPos> stand) {
+        if (client.player == null) return Result.NO_PATH;
+        return walk(client, destination, at -> stand.test(pos(at)) && goal(client, at, destination));
+    }
+
+    /** Walks until the feet are in exactly this cell. */
+    public Result stepTo(Minecraft client, BlockPos feet) {
+        BuilderPathfinder.Cell cell = cell(feet);
+        return walk(client, feet, cell::equals);
+    }
 
     public Result moveTo(Minecraft client, BlockPos destination) {
+        if (client.player == null) return Result.NO_PATH;
+        return walk(client, destination, at -> goal(client, at, destination));
+    }
+
+    private Result walk(Minecraft client, BlockPos destination, Predicate<BuilderPathfinder.Cell> accept) {
         if (client.level == null || client.player == null) return Result.NO_PATH;
         hold(client, false);
         if (!destination.equals(target)) { target = destination.immutable(); rejectedGoals.clear(); replan(); }
         BuilderPathfinder.Cell feet = cell(client.player.blockPosition());
-        if (goal(client, feet, destination)) return Result.ARRIVED;
+        if (accept.test(feet)) return Result.ARRIVED;
         if (route.isEmpty() || index >= route.size()) {
             BuilderPathfinder.Terrain terrain = new BuilderPathfinder.Terrain() {
                 @Override public boolean standable(BuilderPathfinder.Cell at) {
@@ -80,7 +106,7 @@ public final class BuilderNavigator {
                             at.x()+.8, at.y()+1.8, at.z()+.8));
                 }
             };
-            route = BuilderPathfinder.find(feet, cell(destination), terrain, at -> goal(client, at, destination), 6000, 96);
+            route = BuilderPathfinder.find(feet, cell(destination), terrain, accept, 6000, 96);
             index = 0;
             if (route.isEmpty()) return Result.NO_PATH;
         }
@@ -92,13 +118,23 @@ public final class BuilderNavigator {
             next = route.get(index); aim = new Vec3(next.x()+.5, next.y(), next.z()+.5);
         }
         Vec3 delta = aim.subtract(client.player.position());
-        client.player.setYRot((float)Math.toDegrees(Math.atan2(-delta.x, delta.z)));
-        client.player.setXRot(10);
-        steering.forward = true;
-        steering.jump = next.y() > client.player.getY()+.25 && client.player.onGround();
+        float yaw = (float)Math.toDegrees(Math.atan2(-delta.x, delta.z));
+        if (Float.isFinite(turnLimit)) {
+            // Turn like a person: capped per tick, and turn in place before walking off in the wrong direction.
+            float error = net.minecraft.util.Mth.wrapDegrees(yaw - client.player.getYRot());
+            client.player.setYRot(net.minecraft.util.Mth.approachDegrees(client.player.getYRot(), yaw, turnLimit));
+            client.player.setXRot(net.minecraft.util.Mth.approach(client.player.getXRot(), 10, turnLimit));
+            steering.forward = Math.abs(error) <= 60;
+        } else {
+            client.player.setYRot(yaw);
+            client.player.setXRot(10);
+            steering.forward = true;
+        }
+        steering.jump = steering.forward && next.y() > client.player.getY()+.25 && client.player.onGround();
         steering.tick();
-        if (lastPosition != null && client.player.position().distanceToSqr(lastPosition) < .0004) stalled++;
-        else stalled = 0;
+        // Turning in place is not being stuck.
+        if (steering.forward && lastPosition != null && client.player.position().distanceToSqr(lastPosition) < .0004) stalled++;
+        else if (steering.forward) stalled = 0;
         lastPosition = client.player.position();
         if (stalled > 30) { rejectCurrent(client); return Result.STUCK; }
         return Result.MOVING;
