@@ -8,6 +8,34 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-10 (Freecam quality-of-life)
+
+- On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build compileGametestJava --no-daemon` passed, with **160 unit tests**. Then `runClientGameTest -PfreecamTestsOnly=true --no-daemon` passed FreecamGameTest and the existing ModuleKeybindGameTest. The focused flag changes processed test resources only. No dedicated-server EULA flag was created or changed.
+- Unit tests cover the new settings:
+  - defaults for older JSON (smoothing off, resume/follow/look-at off);
+  - persistence of every option;
+  - the raised 0.1-10 speed cap;
+  - NaN, infinite and out-of-range repair;
+  - whole-block coordinate parsing with world bounds.
+- Unit tests also cover the pure camera math:
+  - 0% smoothing returns the exact target velocity, so existing movement is unchanged;
+  - higher smoothing ramps up and down without overshoot and stops fully;
+  - scroll steps of 15% per notch, including 100 trackpad-sized 0.01 deltas equalling one notch;
+  - look angles in all four directions, straight up/down and a coincident target;
+  - follow offset and world clamping.
+- The runtime suite keeps every original check: the actual client and integrated-server player poses stay unchanged, neutral input, queued interactions, the server teleport and disconnect. It adds:
+  - real scroll-wheel input changing speed by exactly 15% while the hotbar slot stays the same, both with the option on and off;
+  - 80% smoothing easing the first tick, reaching the configured speed and coasting after release;
+  - resume returning to the last camera pose, and starting at the eyes when off;
+  - look-at facing a chest within 0.999 dot product while mouse look is ignored;
+  - follow ignoring the local player when alone;
+  - follow keeping its exact offset from a moving server-side Fabric `FakePlayer` the client received;
+  - an open menu freezing camera movement and turning;
+  - `/kill` and a Nether teleport each turning Freecam off without leaving neutral input installed.
+  - All of these were run while the body-pose assertions held.
+- Visually reviewed the new Freecam inspector, the "Freecam 1.15 b/t" readout and the "Following FollowMe" status in actual 1280x800 captures from the run.
+- Remaining scope: no external server or real second client was used. Follow was exercised with a server fake player, not a remote human player. Shader packs and third-party camera mods were not tested.
+
 ## Verified on 2026-11-07 (1.21.0 Staff Detector)
 
 - `build runClientGameTest -PstaffDetectorTestsOnly=true --offline --no-daemon` passed with JDK 21: **148 unit tests**, StaffDetectorGameTest, StaffDetectorGuiGameTest and the existing ModuleKeybindGameTest. The complete source manifest retains all 25 runtime suites. The focused flag changes processed resources only and participates in Gradle input invalidation. No dedicated-server EULA flag was created or changed.
