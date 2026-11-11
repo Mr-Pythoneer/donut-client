@@ -18,6 +18,16 @@ abstract class GameRendererMixin {
         if (FreecamController.enabled()) ci.cancel();
     }
 
+    /** Hold-to-zoom: scales only the world field of view (the hand keeps its normal FOV). */
+    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
+    private void donut$zoom(net.minecraft.client.Camera camera, float partialTick, boolean useFovSetting,
+                            org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Float> cir) {
+        var zoom = dev.donut.client.zoom.ZoomController.get();
+        if (zoom == null || !useFovSetting) return;
+        double multiplier = zoom.fovMultiplier(partialTick);
+        if (multiplier < 1) cir.setReturnValue((float) (cir.getReturnValueF() * multiplier));
+    }
+
     @Inject(method = "pick", at = @At("HEAD"), cancellable = true)
     private void donut$clearTarget(CallbackInfo ci) {
         if (!FreecamController.enabled()) return;

@@ -10,6 +10,9 @@ public final class ClientConfig {
     public StaffDetectorSettings staffDetector = new StaffDetectorSettings();
     public BlockEspSettings blockEsp = new BlockEspSettings();
     public StorageEspSettings storageEsp = new StorageEspSettings();
+    public CoordinatesSettings coordinates = new CoordinatesSettings();
+    public ZoomSettings zoom = new ZoomSettings();
+    public DurabilityAlertSettings durabilityAlert = new DurabilityAlertSettings();
     public AmethystSettings amethyst = new AmethystSettings();
     public FullbrightSettings fullbright = new FullbrightSettings();
     public FlySettings fly = new FlySettings();
@@ -48,6 +51,12 @@ public final class ClientConfig {
         blockEsp.sanitize();
         if (storageEsp == null) storageEsp = new StorageEspSettings();
         storageEsp.sanitize();
+        if (coordinates == null) coordinates = new CoordinatesSettings();
+        coordinates.sanitize();
+        if (zoom == null) zoom = new ZoomSettings();
+        zoom.sanitize();
+        if (durabilityAlert == null) durabilityAlert = new DurabilityAlertSettings();
+        durabilityAlert.sanitize();
         progressBar.sanitize();
         hotbar.sanitize();
         accentColor &= 0xFFFFFF;

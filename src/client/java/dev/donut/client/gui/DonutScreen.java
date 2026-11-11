@@ -302,6 +302,7 @@ public final class DonutScreen extends Screen {
     }
 
     private String categoryTitle() {
+        if (searching()) return "Search results";
         return switch (tab) { case 0 -> "Visual"; case 1 -> "Favorites"; case 3 -> "Blatant";
             case 4 -> "Streaming"; default -> "All modules"; };
     }
@@ -372,8 +373,13 @@ public final class DonutScreen extends Screen {
         outline(g, x, y, w, 78, corner(11), selectedModule == index ? LIME : chromeBorder());
         if (enabled(index)) round(g, x + 1, y + 16, 2, 46, 2, LIME);
         text(g, font, ellipsize(name(index), w - 70), x + 14, y + 16, TEXT);
-        text(g, font, index == 3 ? "ACTION" : enabled(index) ? "ACTIVE" : "INACTIVE", x + 14, y + 46,
-                enabled(index) ? SAGE : DIM);
+        String status = index == 3 ? "ACTION" : enabled(index) ? "ACTIVE" : "INACTIVE";
+        if (searching()) {
+            // Search spans every category: say where the result lives and which setting matched.
+            String setting = ModuleSearchIndex.matchedSetting(index, query);
+            String detail = setting != null ? "Setting: " + setting : moduleCategory(index).toUpperCase(Locale.ROOT) + " | " + status;
+            text(g, font, ellipsize(detail, w - 70), x + 14, y + 46, setting != null ? LIME : enabled(index) ? SAGE : DIM);
+        } else text(g, font, status, x + 14, y + 46, enabled(index) ? SAGE : DIM);
         hit("module" + index, x, y, w - 48, 78, () -> selectModule(index), () -> selectModule(index));
         if (index == 3) text(g, font, "+", x + w - 27, y + 29, LIME);
         else {
@@ -454,11 +460,14 @@ public final class DonutScreen extends Screen {
 
     private float corner(float size) { return (float) (size * config.clickGuiStyle.rounding / 10); }
 
+    private boolean searching() { return !query.isBlank(); }
+
+    /** With a search query, results come from every category (and match setting names); otherwise the tab filters. */
     private boolean matches(int index) {
         if (enabledOnly && !enabled(index)) return false;
-        if ((tab == 0 && (index == 3 || index == 6 || index >= 7 && index <= 9))
+        if (!searching() && (tab == 0 && (index == 3 || index == 6 || index >= 7 && index <= 9))
                 || (tab == 3 && index != 3 && index != 6) || (tab == 4 && (index < 7 || index > 9))) return false;
-        if (tab == 1 && !favorite(index)) return false;
+        if (!searching() && tab == 1 && !favorite(index)) return false;
         String words = switch (index) {
             case 2 -> "freecam free camera fly perspective spectator scroll speed smooth follow player look at target coordinates";
             case 4 -> "base finder basefinder chunk finder chunkfinder geode amethyst activity kelp cave vines bamboo cocoa bee nest";
@@ -475,7 +484,15 @@ public final class DonutScreen extends Screen {
             case 15 -> "storage esp storageesp chest chests double chest trapped barrel shulker ender hopper dropper dispenser furnace smoker blast brewing crafter pot bookshelf minecart boat container stash";
             default -> "autobuilder auto builder schematic litematic building materials navigation";
         };
-        return words.contains(query.toLowerCase(Locale.ROOT).trim());
+        String needle = query.toLowerCase(Locale.ROOT).trim();
+        return words.contains(needle) || name(index).toLowerCase(Locale.ROOT).contains(needle)
+                || ModuleSearchIndex.matchedSetting(index, needle) != null;
+    }
+
+    /** First module in display order that matches the current filters, or -1. */
+    private int firstMatch() {
+        for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT; index++) if (matches(index)) return index;
+        return -1;
     }
 
     private void drawModuleSettings(GuiGraphics g, int index) {
@@ -1011,6 +1028,45 @@ public final class DonutScreen extends Screen {
         });
         settingsCursor += s(44);
         help(g, "Predicts original ore positions in the Overworld. Match the version that generated the chunks. Ores may already be mined; larger radii take longer.");
+    }
+
+    private void drawCoordinatesSettings(GuiGraphics g) {
+        var value = config.coordinates;
+        section(g, "Lines", 0);
+        settingToggle(g, "showFacing", "Facing direction", 0, () -> value.showFacing, () -> value.showFacing = !value.showFacing);
+        settingToggle(g, "showChunk", "Chunk position", 0, () -> value.showChunk, () -> value.showChunk = !value.showChunk);
+        settingToggle(g, "showLinked", "Nether / Overworld coordinates", 0, () -> value.showLinked, () -> value.showLinked = !value.showLinked);
+        settingToggle(g, "showBiome", "Biome", 0, () -> value.showBiome, () -> value.showBiome = !value.showBiome);
+        settingToggle(g, "showFreecam", "Freecam camera position", 0, () -> value.showFreecam, () -> value.showFreecam = !value.showFreecam);
+        section(g, "Placement", 0);
+        settingToggle(g, "bottomRight", "Bottom-right corner", 0, () -> "Bottom right".equals(value.anchor),
+                () -> value.anchor = "Bottom right".equals(value.anchor) ? "Top left" : "Bottom right");
+        help(g, "Hidden while F3, F1 or a menu is open, and with the HUD switched off. Reads only your own position.");
+    }
+
+    private void drawZoomSettings(GuiGraphics g) {
+        var value = config.zoom;
+        section(g, "Zoom", 0);
+        slider(g, "zoomFactor", "Zoom level", 0, () -> value.factor, next -> value.factor = next,
+                dev.donut.client.config.ZoomSettings.MIN_FACTOR, dev.donut.client.config.ZoomSettings.MAX_FACTOR, .5, "x");
+        settingToggle(g, "zoomSmooth", "Smooth transition", 0, () -> value.smooth, () -> value.smooth = !value.smooth);
+        settingToggle(g, "zoomScroll", "Scroll to adjust while held", 0, () -> value.scrollAdjusts, () -> value.scrollAdjusts = !value.scrollAdjusts);
+        settingToggle(g, "zoomRemember", "Remember scrolled level", 0, () -> value.rememberScroll, () -> value.rememberScroll = !value.rememberScroll);
+        settingToggle(g, "zoomSensitivity", "Lower mouse sensitivity", 0, () -> value.reduceSensitivity, () -> value.reduceSensitivity = !value.reduceSensitivity);
+        section(g, "Your controls", 0);
+        var zoomKey = dev.donut.client.input.ModuleKeybinds.zoomKey();
+        controlHint(g, "Hold to zoom", zoomKey == null ? "Unbound" : keyName(zoomKey), 0);
+        help(g, "Change the hold key in Minecraft Controls under Donut Client. Only your view changes; the hand keeps its normal size.");
+    }
+
+    private void drawDurabilityAlertSettings(GuiGraphics g) {
+        var value = config.durabilityAlert;
+        section(g, "Warning", 0);
+        slider(g, "durabilityThreshold", "Warn at or below", 0, () -> value.thresholdPercent, next -> value.thresholdPercent = (int) next, 1, 50, 1, "%");
+        settingToggle(g, "durabilityArmor", "Include armor", 0, () -> value.includeArmor, () -> value.includeArmor = !value.includeArmor);
+        settingToggle(g, "durabilityOffhand", "Include offhand", 0, () -> value.includeOffhand, () -> value.includeOffhand = !value.includeOffhand);
+        settingToggle(g, "durabilitySound", "Local warning chime", 0, () -> value.sound, () -> value.sound = !value.sound);
+        help(g, "Checks your held items and armor. The chime plays once per item, only for you.");
     }
 
     private void drawStorageEspSettings(GuiGraphics g) {
@@ -1738,7 +1794,12 @@ public final class DonutScreen extends Screen {
                 query = (query + pasted).substring(0, Math.min(64, query.length() + pasted.length())); contentProgress = 0; return true;
             }
             if (event.key() == GLFW.GLFW_KEY_BACKSPACE) { query = removeLastCharacter(query); contentProgress = 0; return true; }
-            if (event.key() == GLFW.GLFW_KEY_ENTER) { searchFocused = false; return true; }
+            if (event.key() == GLFW.GLFW_KEY_ENTER) {
+                searchFocused = false;
+                int first = searching() ? firstMatch() : -1;
+                if (first >= 0) selectModule(first); // Enter opens the top result's settings.
+                return true;
+            }
             if (event.key() == GLFW.GLFW_KEY_A && (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0) { query = ""; contentProgress = 0; return true; }
         }
         if (event.key() == GLFW.GLFW_KEY_TAB && !hits.isEmpty()) {

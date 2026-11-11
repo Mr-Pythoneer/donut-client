@@ -49,6 +49,11 @@ public final class ModuleKeybinds {
 
     public static KeyMapping mapping(int index) { return MODULES[index]; }
 
+    /** Zoom's hold-to-zoom key (not a module toggle; the Zoom module's own toggle uses its module slot). */
+    private static KeyMapping zoomKey;
+    public static void setZoomKey(KeyMapping key) { zoomKey = key; }
+    public static KeyMapping zoomKey() { return zoomKey; }
+
     public static void setKey(Minecraft client, int index, InputConstants.Key key) {
         KeyMapping mapping = mapping(index);
         if (mapping == null) return;
