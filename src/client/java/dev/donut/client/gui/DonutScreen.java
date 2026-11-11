@@ -41,12 +41,15 @@ public final class DonutScreen extends Screen {
     private int W = 1320, H = 830;
     private static final int TEXT = 0xFFE7EAF2, MUTED = 0xFFC4C7D3, DIM = 0xFF959BAD;
     private static final int PANEL = 0xFF191B24, RAIL = 0xFF1C1F29, CARD = 0xFF252833;
-    private static final int BORDER = 0xFF424655, FIELD = 0xFF15171E, BRAND = 0xFF7ACDF4;
-    private static final int LIME = 0xFFCBDC56, SAGE = 0xFFB0DE77;
+    private static final int BORDER = 0xFF424655, FIELD = 0xFF15171E;
     private static final int CONTROL = 0xFF2A2E36, CONTROL_HOVER = 0xFF343945;
     private static final int CONTROL_TEXT = 0xFFF2F4F8, CONTROL_MUTED = 0xFFA8AEBA;
     private int CX = 210, CW = 728, TOP = 273, BOTTOM = 785;
     private static final int CARD_HEADER = 78;
+    /** Module tile height and the vertical gap between tiles, in workspace units. */
+    public static final int TILE_H = 58, TILE_GAP = 10;
+    private int searchY = 220;
+    private long resultMask = -1;
     private int railW, bodyX, bodyW, columns;
     private int detailX, detailW, detailTop, detailBottom, detailContentHeight;
     private double detailScroll, detailScrollTarget, detailProgress;
@@ -135,10 +138,12 @@ public final class DonutScreen extends Screen {
         detailX = W - detailW - 16;
         CX = bodyX + 4;
         CW = bodyW - 8;
-        TOP = 273;
-        BOTTOM = H - 45;
-        detailTop = 274;
-        detailBottom = H - 46;
+        // One header row (title + search), then content; every panel ends at the same line above the footer.
+        searchY = 92 + s(24) + s(14);
+        TOP = searchY + s(30) + 12;
+        BOTTOM = H - 50;
+        detailTop = TOP;
+        detailBottom = H - 62;
         columns = bodyW >= 500 ? 2 : 1;
         dragging = null;
         hits.clear();
@@ -190,12 +195,6 @@ public final class DonutScreen extends Screen {
                 drawCategories(g);
                 drawWorkspaceHeader(g);
                 drawOverview(g);
-                if (colorEditor == null && dragging == null && binding < 0 && hoveredModule >= 0
-                        && hoveredModule != previewModule) {
-                    previewModule = hoveredModule;
-                    detailProgress = 0;
-                    detailScroll = detailScrollTarget = 0;
-                }
                 drawDetails(g);
             }
             drawFooter(g);
@@ -218,10 +217,9 @@ public final class DonutScreen extends Screen {
 
     // Geometry, palette and motion are ported from Spectre's renderWorkspaceFrame.
     private void drawFrame(GuiGraphics g) {
-        for (int i = 8; i >= 1; i--) {
-            float spread = 2.5f * fontScale * i;
-            round(g, -spread, -spread + 4 * fontScale, W + spread * 2, H + spread * 2,
-                    18 + spread, 0x14000000);
+        for (int i = 3; i >= 1; i--) {
+            float spread = 3f * fontScale * i;
+            round(g, -spread, -spread + 3 * fontScale, W + spread * 2, H + spread * 2, corner(18) + spread, 0x10000000);
         }
         surface(g, 0, 0, W, H, corner(18), PANEL, 0.94f);
         g.enableScissor(0, 0, W, 76);
@@ -230,27 +228,43 @@ public final class DonutScreen extends Screen {
         outline(g, 0, 0, W, H, corner(18), chromeBorder());
         line(g, 1, 76, W - 1, 76, chromeBorder());
         line(g, 1, H - 38, W - 1, H - 38, chromeBorder());
-        round(g, 20, 21, 32, 32, 16, alpha(LIME, .12));
-        DonutLogo.draw(g, 22, 23, 28, config.clickGuiStyle.animationSpeed);
-        text(g, font, "DONUT", 62, 21, BRAND);
-        text(g, font, "MODULE CONTROL", 62, Math.max(41, 21 + s(20)), DIM);
+        DonutLogo.draw(g, 22, 26, 24, config.clickGuiStyle.animationSpeed);
+        text(g, font, "Donut Client", 56, mid(0, 76), TEXT);
         String[] labels = {"Modules", "HUD", "Appearance"};
         int[] destinations = {lastCategory, 6, 2};
         int current = tab == 2 ? 2 : tab == 6 ? 1 : 0;
         int navW = Math.max(96, s(96)), navX = W - 24 - navW * labels.length - 34;
         for (int i = 0; i < labels.length; i++) {
             int x = 12 + navX + i * navW, target = destinations[i];
-            double h = animate("topNav" + i, current == i || inside(x, 17, navW - 4, 42) ? 1 : 0);
-            round(g, x, 17, navW - 4, 42, 9, alpha(LIME, h * .09));
-            text(g, font, labels[i], x + (navW - 4 - WorkspacePaint.width(font, labels[i])) / 2, 30,
+            double h = animate("topNav" + i, inside(x, 17, navW - 4, 42) ? 1 : 0);
+            round(g, x, 17, navW - 4, 42, corner(7), alpha(0xFFFFFF, h * .05));
+            text(g, font, labels[i], x + (navW - 4 - WorkspacePaint.width(font, labels[i])) / 2, mid(17, 42),
                     current == i ? TEXT : MUTED);
             String id = i == 0 ? "workspaceModules" : i == 1 ? "tab6" : "tab2";
             hit(id, x, 17, navW - 4, 42, () -> switchTab(target));
         }
         tabIndicator = ease(tabIndicator, current, 18);
-        round(g, (float) (12 + navX + tabIndicator * navW + 20), 60, navW - 44, 2, 2, LIME);
-        text(g, font, "x", W - 40, 29, MUTED);
+        round(g, (float) (12 + navX + tabIndicator * navW + 20), 74, navW - 44, 2, 1, accent());
+        text(g, font, "\u00D7", W - 40, mid(24, 26), MUTED);
         hit("close", W - 44, 24, 22, 26, this::onClose);
+    }
+
+    private int accent() { return alpha(config.accentColor, 1); }
+
+    /** Text y that centres body text (16) in a box. */
+    private int mid(float top, float height) { return Math.round(WorkspacePaint.centered(top, height, WorkspacePaint.BODY_SIZE)); }
+
+    private int midSmall(float top, float height) { return Math.round(WorkspacePaint.centered(top, height, WorkspacePaint.SMALL_SIZE)); }
+
+    /** Replays the list animation only when the set of matching modules actually changes. */
+    private void refreshResults() {
+        long mask = 0;
+        for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT && index < 64; index++) if (matches(index)) mask |= 1L << index;
+        if (mask != resultMask) {
+            resultMask = mask;
+            contentProgress = 0;
+            scroll = scrollTarget = 0;
+        }
     }
 
     private void switchTab(int target) {
@@ -259,6 +273,7 @@ public final class DonutScreen extends Screen {
         if (!commitTimerDuration()) cancelTimerDuration();
         tab = target;
         query = "";
+        resultMask = -1;
         if (target != 2 && target != 6) lastCategory = target;
         contentProgress = 0;
         scroll = scrollTarget = 0;
@@ -269,17 +284,18 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawCategories(GuiGraphics g) {
-        surface(g, 12, 86, railW, H - 122, corner(9), alpha(config.clickGuiStyle.panelsColor, config.clickGuiStyle.panelsOpacity), 0.9f);
-        text(g, font, "WORKSPACE", 26, 99, BRAND);
-        category(g, "All modules", 128, 5);
-        category(g, "Visual", 178, 0);
-        category(g, "Blatant", 221, 3);
-        category(g, "Streaming", 264, 4);
-        category(g, "Favorites", 307, 1);
-        int y = Math.max(370, H - 118);
-        round(g, 29, y + 14, 6, 6, 3, enabledOnly ? SAGE : 0xFF685746);
-        text(g, font, "Enabled only", 46, y + 10, enabledOnly ? 0xFFD9F3C8 : MUTED);
-        hit("enabledOnly", 24, y, railW - 24, 34, () -> {
+        surface(g, 12, 88, railW, H - 138, corner(9), alpha(config.clickGuiStyle.panelsColor, config.clickGuiStyle.panelsOpacity), 0.9f);
+        smallText(g, font, "Categories", 26, 102, DIM);
+        category(g, "All modules", 124, 5);
+        category(g, "Visual", 166, 0);
+        category(g, "Blatant", 208, 3);
+        category(g, "Streaming", 250, 4);
+        category(g, "Favorites", 292, 1);
+        int y = Math.max(340, H - 50 - 46);
+        line(g, 24, y - 6, railW, y - 6, chromeBorder());
+        round(g, 29, y + 15, 7, 7, 3.5f, enabledOnly ? accent() : 0xFF4A4F5C);
+        text(g, font, "Enabled only", 46, mid(y, 36), enabledOnly ? TEXT : MUTED);
+        hit("enabledOnly", 24, y, railW - 24, 36, () -> {
             enabledOnly = !enabledOnly;
             contentProgress = 0;
             scroll = scrollTarget = 0;
@@ -287,17 +303,17 @@ public final class DonutScreen extends Screen {
     }
 
     private void category(GuiGraphics g, String label, int y, int target) {
-        boolean chosen = tab == target;
+        boolean chosen = tab == target && !searching();
         double hover = animate("category" + target, chosen || inside(18, y, railW - 12, 38) ? 1 : 0);
-        round(g, 18, y, railW - 12, 38, 8, alpha(LIME, hover * .08));
-        if (chosen) round(g, 18, y + 10, 3, 18, 2, LIME);
-        int tint = chosen ? alpha(config.accentColor, 1) : 0xFF7A848C;
-        if (target == 5) outline(g, 32, y + 13, 11, 11, 3, MUTED);
+        round(g, 18, y, railW - 12, 38, corner(7), alpha(0xFFFFFF, hover * (chosen ? .07 : .04)));
+        if (chosen) round(g, 18, y + 11, 2, 16, 1, accent());
+        int tint = chosen ? accent() : 0xFF7A848C;
+        if (target == 5) outline(g, 32, y + 13, 11, 11, 3, chosen ? tint : MUTED);
         else if (target == 0) camera(g, 30, y + 9, tint);
         else if (target == 3) caution(g, 30, y + 9, tint);
         else if (target == 1) star(g, 31, y + 10, tint);
         else outline(g, 31, y + 13, 14, 12, 3, tint);
-        text(g, font, label, 54, y + 12, chosen ? TEXT : MUTED);
+        text(g, font, label, 54, mid(y, 38), chosen ? TEXT : MUTED);
         hit("tab" + target, 18, y, railW - 12, 38, () -> switchTab(target));
     }
 
@@ -312,20 +328,19 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawWorkspaceHeader(GuiGraphics g) {
-        surface(g, bodyX + 4, 92, bodyW - 8, 110, corner(10), 0xFF252837, 0.78f);
-        outline(g, bodyX + 4, 92, bodyW - 8, 110, corner(10), config.clickGuiStyle.liquidGlass ? 0x35FFF2D6 : 0xFF55492C);
-        text(g, font, "YOUR MODULE DESK", bodyX + 20, 107, LIME);
-        WorkspacePaint.title(g, font, categoryTitle(), bodyX + 20, 130, TEXT);
-        text(g, font, "Hover to explore. Select to configure.", bodyX + 20, 160, MUTED);
-        DonutLogo.draw(g, bodyX + bodyW - 108, 95, 100, config.clickGuiStyle.animationSpeed);
-        int x = bodyX + 4, y = 220, w = bodyW - 8, h = Math.round(30 * fontScale);
-        surface(g, x, y, w, h, 7 * fontScale, CONTROL, 0.82f);
-        if (searchFocused) outline(g, x, y, w, h, 7 * fontScale, alpha(config.accentColor, .55));
-        String shown = query.isEmpty() && !searchFocused ? "Search modules..."
+        int count = 0;
+        for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT; index++) if (matches(index)) count++;
+        int titleH = s(24);
+        WorkspacePaint.title(g, font, categoryTitle(), bodyX + 4, 92, TEXT);
+        right(g, font, count + (count == 1 ? " module" : " modules"), bodyX + bodyW - 4, mid(92, titleH), DIM);
+        int x = bodyX + 4, y = searchY, w = bodyW - 8, h = s(30);
+        surface(g, x, y, w, h, corner(7), CONTROL, 0.82f);
+        outline(g, x, y, w, h, corner(7), searchFocused ? alpha(config.accentColor, .7) : chromeBorder());
+        String shown = query.isEmpty() && !searchFocused ? "Search modules and settings"
                 : query + (searchFocused && System.currentTimeMillis() % 1000 < 500 ? "|" : "");
         while (WorkspacePaint.width(font, shown) > w - 22 && !shown.isEmpty()) shown = removeFirstCharacter(shown);
-        text(g, font, shown, x + Math.round(10 * fontScale), y + Math.round(7 * fontScale),
-                query.isEmpty() ? CONTROL_MUTED : CONTROL_TEXT);
+        text(g, font, shown, x + s(10), mid(y, h), query.isEmpty() ? CONTROL_MUTED : CONTROL_TEXT);
+        if (!query.isEmpty()) smallText(g, font, "Esc clears", x + w - s(10) - WorkspacePaint.smallWidth(font, "Esc clears"), midSmall(y, h), DIM);
         hit("search", x, y, w, h, () -> searchFocused = true);
     }
 
@@ -342,15 +357,15 @@ public final class DonutScreen extends Screen {
     private void drawOverview(GuiGraphics g) {
         int count = 0;
         for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT; index++) if (matches(index)) count++;
-        contentHeight = ((count + columns - 1) / columns) * 92 + 10;
+        contentHeight = ((count + columns - 1) / columns) * (TILE_H + TILE_GAP) + 10;
         clampScroll();
         beginContent(g);
         int ordinal = 0, tileW = (bodyW - 8 - 12 * (columns - 1)) / columns;
         for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT; index++) {
             if (!matches(index)) continue;
-            double phase = easeOut(Math.clamp((easeOut(contentProgress) - Math.min(ordinal, 8) * .025) / .8, 0, 1));
+            double phase = easeOut(Math.clamp((easeOut(contentProgress) - Math.min(ordinal, 8) * .02) / .8, 0, 1));
             int x = CX + ordinal % columns * (tileW + 12);
-            int y = TOP + ordinal / columns * 92 - (int) scroll + (int) ((1 - phase) * 12);
+            int y = TOP + ordinal / columns * (TILE_H + TILE_GAP) - (int) scroll + (int) ((1 - phase) * 6);
             double opacity = pushOpacity(phase);
             try { moduleTile(g, index, x, y, tileW); }
             finally { popOpacity(opacity); }
@@ -358,36 +373,46 @@ public final class DonutScreen extends Screen {
         }
         if (count == 0) {
             text(g, font, "No modules found", bodyX + 14, TOP + 26, CONTROL_TEXT);
-            text(g, font, enabledOnly ? "Try disabling Enabled only." : "Try another name or category.",
+            text(g, font, enabledOnly ? "Turn off Enabled only to see every module." : "Try a different name or setting.",
                     bodyX + 14, TOP + 53, CONTROL_MUTED);
         }
         endContent(g);
     }
 
     private void moduleTile(GuiGraphics g, int index, int x, int y, int w) {
-        boolean hovered = colorEditor == null && inside(x, y, w, 78) && mouseY >= TOP && mouseY < BOTTOM;
+        boolean hovered = colorEditor == null && inside(x, y, w, TILE_H) && mouseY >= TOP && mouseY < BOTTOM;
         if (hovered) hoveredModule = index;
-        double hover = animate("tile" + index, hovered || selectedModule == index ? 1 : 0);
-        surface(g, x, y, w, 78, corner(11), alpha(config.clickGuiStyle.cardsColor, config.clickGuiStyle.cardsOpacity), 0.86f);
-        round(g, x, y, w, 78, corner(11), alpha(LIME, hover * .055));
-        outline(g, x, y, w, 78, corner(11), selectedModule == index ? LIME : chromeBorder());
-        if (enabled(index)) round(g, x + 1, y + 16, 2, 46, 2, LIME);
-        text(g, font, ellipsize(name(index), w - 70), x + 14, y + 16, TEXT);
-        String status = index == 3 ? "ACTION" : enabled(index) ? "ACTIVE" : "INACTIVE";
+        boolean selected = selectedModule == index;
+        double hover = animate("tile" + index, hovered ? 1 : 0);
+        surface(g, x, y, w, TILE_H, corner(8), alpha(config.clickGuiStyle.cardsColor, config.clickGuiStyle.cardsOpacity), 0.86f);
+        round(g, x, y, w, TILE_H, corner(8), alpha(0xFFFFFF, hover * .035 + (selected ? .03 : 0)));
+        outline(g, x, y, w, TILE_H, corner(8), selected ? alpha(config.accentColor, .85) : chromeBorder());
+        int textW = w - 70, nameY = y + 11, detailY = y + TILE_H - 11 - s(13);
+        text(g, font, ellipsize(name(index), textW), x + 14, nameY, TEXT);
+        String detail;
+        int detailColor = DIM;
         if (searching()) {
-            // Search spans every category: say where the result lives and which setting matched.
+            // Search spans every category: say which setting matched, or where the module lives.
             String setting = ModuleSearchIndex.matchedSetting(index, query);
-            String detail = setting != null ? "Setting: " + setting : moduleCategory(index).toUpperCase(Locale.ROOT) + " | " + status;
-            text(g, font, ellipsize(detail, w - 70), x + 14, y + 46, setting != null ? LIME : enabled(index) ? SAGE : DIM);
-        } else text(g, font, status, x + 14, y + 46, enabled(index) ? SAGE : DIM);
-        hit("module" + index, x, y, w - 48, 78, () -> selectModule(index), () -> selectModule(index));
-        if (index == 3) text(g, font, "+", x + w - 27, y + 29, LIME);
+            detail = setting != null ? "Setting: " + setting : moduleCategory(index) + " \u00B7 " + (index == 3 ? "Action" : enabled(index) ? "On" : "Off");
+            if (setting != null) detailColor = CONTROL_MUTED;
+        } else detail = description(index);
+        smallText(g, font, ellipsizeSmall(detail, textW), x + 14, detailY, detailColor);
+        hit("module" + index, x, y, w - 48, TILE_H, () -> selectModule(index), () -> selectModule(index));
+        int switchY = y + (TILE_H - 17) / 2;
+        if (index == 3) smallText(g, font, "Open", x + w - 14 - WorkspacePaint.smallWidth(font, "Open"), midSmall(y, TILE_H), CONTROL_MUTED);
         else {
             double on = animate("tileEnabled" + index, enabled(index) ? 1 : 0);
-            round(g, x + w - 39, y + 25, 30, 17, 9, on > .5 ? SAGE : 0xFF594535);
-            round(g, x + w - 36.5f + (float) on * 13, y + 28, 11, 11, 5.5f, TEXT);
+            round(g, x + w - 44, switchY, 30, 17, 8.5f, blend(0xFF3A3F4A, accent(), on));
+            round(g, x + w - 41.5f + (float) on * 13, switchY + 3, 11, 11, 5.5f, TEXT);
         }
-        hit("enable" + index, x + w - 42, y + 13, 32, 52, () -> toggleEnabled(index));
+        hit("enable" + index, x + w - 47, y + (TILE_H - 40) / 2, 36, 40, () -> toggleEnabled(index));
+    }
+
+    private String ellipsizeSmall(String value, int maxWidth) {
+        if (WorkspacePaint.smallWidth(font, value) <= maxWidth) return value;
+        while (!value.isEmpty() && WorkspacePaint.smallWidth(font, value + "...") > maxWidth) value = removeLastCharacter(value);
+        return value + "...";
     }
 
     private void selectModule(int index) {
@@ -403,31 +428,26 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawDetails(GuiGraphics g) {
-        int x = detailX, y = 88, w = detailW, h = H - 122;
+        int x = detailX, y = 88, w = detailW, h = H - 138;
         surface(g, x, y, w, h, corner(12), alpha(config.clickGuiStyle.panelsColor, config.clickGuiStyle.panelsOpacity), 0.93f);
         outline(g, x, y, w, h, corner(12), chromeBorder());
-        text(g, font, selectedModule == previewModule && previewModule >= 0 ? "MODULE SETTINGS" : "MODULE PREVIEW",
-                x + 20, y + 20, DIM);
-        if (previewModule < 0) {
-            text(g, font, "Explore your modules", x + 20, y + 76, TEXT);
-            WorkspacePaint.wrapped(g, font, "Hover over a module to see its details here. Select a module to edit its settings.",
-                    x + 20, y + 108, w - 40, CONTROL_MUTED);
+        // The panel follows clicks only; hovering a tile never changes it.
+        previewModule = selectedModule;
+        if (selectedModule < 0) {
+            text(g, font, "No module selected", x + 20, y + 24, TEXT);
+            WorkspacePaint.wrapped(g, font, "Click a module to see its settings and keybind.", x + 20, y + 24 + s(26), w - 40, CONTROL_MUTED);
             return;
         }
-        int index = previewModule;
+        int index = selectedModule;
         double opacity = pushOpacity(Math.max(.03, easeOut(detailProgress)));
         try {
-            int rise = (int) ((1 - easeOut(detailProgress)) * 6);
-            text(g, font, name(index), x + 20, y + 58 + rise, CONTROL_TEXT);
-            text(g, font, moduleCategory(index), x + 20, y + 86, CONTROL_MUTED);
-            int descriptionH = WorkspacePaint.wrapped(g, font, description(index), x + 20, y + 119, w - 40, CONTROL_TEXT);
-            detailTop = y + Math.max(186, 119 + descriptionH + 24);
+            int rise = (int) ((1 - easeOut(detailProgress)) * 4);
+            WorkspacePaint.title(g, font, name(index), x + 20, y + 20 + rise, CONTROL_TEXT);
+            smallText(g, font, moduleCategory(index), x + 20, y + 20 + s(36), DIM);
+            int descriptionH = WorkspacePaint.wrapped(g, font, description(index), x + 20, y + 20 + s(60), w - 40, CONTROL_MUTED);
+            detailTop = y + 20 + s(60) + descriptionH + s(18);
             detailBottom = y + h - 12;
-            line(g, x + 20, detailTop - 10, x + w - 20, detailTop - 10, chromeBorder());
-            if (index != selectedModule) {
-                button(g, "configureModule", "Configure module", x + 20, detailTop, w - 40, s(34), () -> selectModule(index));
-                return;
-            }
+            line(g, x + 20, detailTop - s(8), x + w - 20, detailTop - s(8), chromeBorder());
             clampDetailScroll();
             beginRegion(g, x + 1, detailTop, w - 2, detailBottom - detailTop);
             rowX = x + 20;
@@ -573,7 +593,7 @@ public final class DonutScreen extends Screen {
                 String method = methods.get(i);
                 int top = y + i * rowH;
                 if (inside(modeX, top, modeW, rowH)) round(g, modeX, top, modeW, rowH, s(5), CONTROL_HOVER);
-                text(g, font, method, modeX + s(10), top + s(8), CONTROL_TEXT);
+                text(g, font, method, modeX + s(10), mid(top, rowH), CONTROL_TEXT);
                 hit("m" + selectedModule + ".method" + i, modeX, top, modeW, rowH,
                         () -> { change(() -> { if (selectedModule == 10) config.amethyst.method = method; else config.chunkFinder.method = method; }); scannerMethodMenu = false; });
             }
@@ -585,24 +605,27 @@ public final class DonutScreen extends Screen {
         double hover = animate("button" + id, inside(x, y, w, h) ? 1 : 0);
         surface(g, x, y, w, h, s(7), blend(CONTROL, CONTROL_HOVER, hover), 0.78f);
         String shown = ellipsize(label, w - s(12));
-        text(g, font, shown, x + (w - WorkspacePaint.width(font, shown)) / 2, y + (h - s(16)) / 2, CONTROL_TEXT);
+        text(g, font, shown, x + (w - WorkspacePaint.width(font, shown)) / 2, mid(y, h), CONTROL_TEXT);
         hit(id, x, y, w, h, action);
     }
 
     private void drawHudWorkspace(GuiGraphics g) {
         detailW = Math.round(Math.min(360 * fontScale, .43f * W));
         detailX = W - detailW - 16;
-        int previewW = W - detailW - 48, pad = s(20), h = H - 114;
-        surface(g, 16, 88, previewW, h, s(12), 0xFF101823, 0.9f);
-        surface(g, detailX, 88, detailW, h, s(22), 0xFF101823, 0.93f);
-        outline(g, detailX, 88, detailW, h, s(22), 0x12FFFFFF);
+        int previewW = W - detailW - 48, pad = s(20), h = H - 138;
+        int panel = alpha(config.clickGuiStyle.panelsColor, config.clickGuiStyle.panelsOpacity);
+        surface(g, 16, 88, previewW, h, corner(12), panel, 0.9f);
+        outline(g, 16, 88, previewW, h, corner(12), chromeBorder());
+        surface(g, detailX, 88, detailW, h, corner(12), panel, 0.93f);
+        outline(g, detailX, 88, detailW, h, corner(12), chromeBorder());
         WorkspacePaint.title(g, font, "HUD", detailX + pad, 88 + pad, CONTROL_TEXT);
         smallText(g, font, "Choose an element to edit it.", detailX + pad, 88 + pad + s(34), CONTROL_MUTED);
-        smallText(g, font, "HUD ELEMENTS", 16 + pad, 88 + pad, CONTROL_MUTED);
+        smallText(g, font, "Elements", 16 + pad, 88 + pad, DIM);
         int cardW = previewW - pad * 2, y = 88 + s(64);
         int[] modules = {7, 9};
         for (int module : modules) {
-            surface(g, 16 + pad, y, cardW, s(84), s(10), 0xFF182230, 0.84f);
+            surface(g, 16 + pad, y, cardW, s(84), corner(8), alpha(config.clickGuiStyle.cardsColor, config.clickGuiStyle.cardsOpacity), 0.84f);
+            outline(g, 16 + pad, y, cardW, s(84), corner(8), chromeBorder());
             text(g, font, name(module), 16 + pad * 2, y + s(16), CONTROL_TEXT);
             text(g, font, ellipsize(description(module), cardW - pad * 2), 16 + pad * 2, y + s(45), CONTROL_MUTED);
             hit("hudModule" + module, 16 + pad, y, cardW, s(84), () -> { switchTab(4); selectModule(module); });
@@ -618,6 +641,8 @@ public final class DonutScreen extends Screen {
         settingsCursor = detailTop - (int) detailScroll;
         section(g, "General settings", 0);
         settingToggle(g, "hud", "Array list", 0, () -> config.showHud, () -> config.showHud = !config.showHud);
+        slider(g, "hudScaleHud", "Panel size", 0, () -> config.clickGuiStyle.hudScale, value -> config.clickGuiStyle.hudScale = value, .6, 1.6, .05, "%");
+        help(g, "Size of the in-game panels (coordinates, Storage ESP, alerts, the module list). It follows your window, not the GUI scale.");
         section(g, "Progress bar", 0);
         settingToggle(g, "hudProgress", "Show progress bar", 0, () -> config.progressBar.enabled, () -> config.progressBar.enabled = !config.progressBar.enabled);
         button(g, "hudMoveOverlay", "Edit position & size", rowX, settingsCursor, rowW, s(34), () -> {
@@ -1315,7 +1340,7 @@ public final class DonutScreen extends Screen {
         boolean conflict = !conflicts(index).isEmpty();
         surface(g, x, y, w, h, s(7), capturing ? alpha(config.accentColor, .55) : hovered ? CONTROL_HOVER : CONTROL, 0.78f);
         String value = capturing ? "Press a key..." : (conflict ? "! " : "") + (mapping.isUnbound() ? "None" : keyName(mapping));
-        text(g, font, ellipsize(value, w - s(16)), x + s(8), y + s(7), capturing ? CONTROL_TEXT : conflict ? 0xFFFFC66B : CONTROL_TEXT);
+        text(g, font, ellipsize(value, w - s(16)), x + s(8), mid(y, h), capturing ? CONTROL_TEXT : conflict ? 0xFFFFC66B : CONTROL_TEXT);
         hit("keybind" + index, x, y, w, h, () -> {
             binding = index;
             dragging = null;
@@ -1335,16 +1360,19 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawFooter(GuiGraphics g) {
-        text(g, font, "DONUT   /   YOUR WORKSPACE", 26, H - 25, DIM);
-        int active = 0;
+        int top = H - 38, height = 38, active = 0;
         for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT; index++) if (enabled(index)) active++;
-        text(g, font, active + " modules active", W - 180, H - 25, DIM);
-        String message = binding >= 0 ? "Press a key. Delete clears. ESC cancels." : "";
+        String status = active + " of " + ModuleKeybinds.MODULE_COUNT + " modules on";
+        int statusW = WorkspacePaint.smallWidth(font, status);
+        smallText(g, font, status, W - 24 - statusW, midSmall(top, height), DIM);
+        String message = binding >= 0 ? "Press a key. Delete clears, Esc cancels." : "";
         if (hoveredBinding >= 0 && binding < 0) {
             String conflict = conflicts(hoveredBinding);
             message = conflict.isEmpty() ? "Click to assign a key or mouse button." : "Also used by: " + conflict;
         }
-        if (!message.isEmpty()) smallText(g, font, ellipsize(message, W - 520), 310, H - 23, CONTROL_MUTED);
+        boolean hint = message.isEmpty();
+        if (hint) message = tab == 2 || tab == 6 ? "Esc closes" : "Ctrl+F search  \u00B7  Enter opens the top result  \u00B7  Esc closes";
+        smallText(g, font, ellipsizeSmall(message, W - 48 - statusW - 24), 24, midSmall(top, height), hint ? DIM : CONTROL_MUTED);
     }
 
     private String ellipsize(String value, int maxWidth) {
@@ -1355,9 +1383,9 @@ public final class DonutScreen extends Screen {
 
     private void controlHint(GuiGraphics g, String label, String keys, int ignored) {
         int y = settingsCursor;
-        text(g, font, label, rowX, y + s(10), CONTROL_TEXT);
+        text(g, font, label, rowX, mid(y, s(38)), CONTROL_TEXT);
         int labelW = WorkspacePaint.width(font, label);
-        right(g, font, ellipsize(keys, Math.max(s(60), rowW - labelW - s(16))), rowX + rowW, y + s(10), CONTROL_MUTED);
+        right(g, font, ellipsize(keys, Math.max(s(60), rowW - labelW - s(16))), rowX + rowW, mid(y, s(38)), CONTROL_MUTED);
         settingsCursor += s(38);
     }
 
@@ -1403,8 +1431,8 @@ public final class DonutScreen extends Screen {
 
     private void group(GuiGraphics g, String id, String title, int ignored, boolean open, Runnable action) {
         int y = settingsCursor;
-        smallText(g, font, title, rowX, y + s(16), CONTROL_MUTED);
-        text(g, font, open ? "-" : "+", rowX + rowW - s(14), y + s(12), CONTROL_MUTED);
+        smallText(g, font, title, rowX, midSmall(y, s(40)), CONTROL_MUTED);
+        text(g, font, open ? "-" : "+", rowX + rowW - s(14), mid(y, s(40)), CONTROL_MUTED);
         hit(rowPrefix + id, rowX, y, rowW, s(40), action);
         settingsCursor += s(40);
     }
@@ -1418,9 +1446,9 @@ public final class DonutScreen extends Screen {
         String display = unit.equals("%") ? Math.round(value * (step < 1 ? 100 : 1)) + "%"
                 : step >= 1 ? Math.round(value) + unit : String.format(Locale.ROOT, "%.1f%s", value, unit);
         int pillW = WorkspacePaint.smallWidth(font, display) + s(16), pillH = s(21);
-        text(g, font, ellipsize(label, rowW - pillW - s(8)), rowX, y + s(10), CONTROL_TEXT);
+        text(g, font, ellipsize(label, rowW - pillW - s(8)), rowX, mid(y + s(7), pillH), CONTROL_TEXT);
         surface(g, rowX + rowW - pillW, y + s(7), pillW, pillH, pillH / 2f, CONTROL, 0.78f);
-        smallText(g, font, display, rowX + rowW - pillW + s(8), y + s(11), CONTROL_MUTED);
+        smallText(g, font, display, rowX + rowW - pillW + s(8), midSmall(y + s(7), pillH), CONTROL_MUTED);
         int trackX = rowX + s(7), trackW = rowW - s(14), trackY = y + s(45);
         double t = Math.clamp((value - min) / (max - min), 0, 1);
         boolean hovered = inside(rowX, y + s(36), rowW, s(18));
@@ -1441,9 +1469,9 @@ public final class DonutScreen extends Screen {
         int y = settingsCursor, x = rowX + rowW - s(40);
         double hover = animate("settingHover" + rowPrefix + id, inside(rowX, y, rowW, s(46)) ? 1 : 0);
         round(g, rowX - s(6), y, rowW + s(12), s(46), s(6), alpha(0xFFFFFF, .04 * hover));
-        text(g, font, ellipsize(label, rowW - s(52)), rowX, y + s(15), CONTROL_TEXT);
+        text(g, font, ellipsize(label, rowW - s(52)), rowX, mid(y, s(46)), CONTROL_TEXT);
         double on = animate("settingToggle" + rowPrefix + id, value.getAsBoolean() ? 1 : 0);
-        surface(g, x, y + s(12), s(40), s(22), s(11), blend(0xFF3A3F4A, config.accentColor, on), 0.62f);
+        round(g, x, y + s(12), s(40), s(22), s(11), blend(0xFF3A3F4A, accent(), on));
         float knobX = x + s(11) + (float) on * s(18), knobY = y + s(23), r = 8.5f * fontScale;
         round(g, knobX - r, knobY - r + fontScale, r * 2, r * 2, r, 0x30000000);
         round(g, knobX - r, knobY - r, r * 2, r * 2, r, 0xFFF5F6F8);
@@ -1454,14 +1482,14 @@ public final class DonutScreen extends Screen {
 
     private void toggle(GuiGraphics g, String id, int x, int y, boolean on, Runnable action) {
         double position = animate("toggle" + id, on ? 1 : 0);
-        round(g, x, y, 23, 12, 6, blend(BORDER, config.accentColor, position));
+        round(g, x, y, 23, 12, 6, blend(BORDER, accent(), position));
         round(g, x + 2 + (float) (11 * position), y + 2, 8, 8, 4, blend(DIM, 0xFFFFFFFF, position));
         hit(id, x - 3, y - 4, 29, 20, action);
     }
 
     private void colorRow(GuiGraphics g, String label, int ignored, IntSupplier getter, IntConsumer setter) {
         int y = settingsCursor, x = rowX + rowW - s(44);
-        text(g, font, ellipsize(label, rowW - s(60)), rowX, y + s(15), CONTROL_TEXT);
+        text(g, font, ellipsize(label, rowW - s(60)), rowX, mid(y + s(11), s(24)), CONTROL_TEXT);
         round(g, x, y + s(11), s(44), s(24), s(7), alpha(getter.getAsInt(), 1));
         outline(g, x, y + s(11), s(44), s(24), s(7), alpha(0xFFFFFF, inside(x, y, s(44), s(46)) ? .4 : .15));
         hit(rowPrefix + "color" + label, x, y + s(11), s(44), s(24),
@@ -1473,19 +1501,21 @@ public final class DonutScreen extends Screen {
         var style = config.clickGuiStyle;
         detailW = Math.round(Math.min(360 * fontScale, .43f * W));
         detailX = W - detailW - 16;
-        int previewW = W - detailW - 48, panelH = H - 114;
-        surface(g, 16, 88, previewW, panelH, 12, 0xFF101823, 0.9f);
-        surface(g, detailX, 88, detailW, panelH, s(22), 0xFF101823, 0.93f);
-        outline(g, detailX, 88, detailW, panelH, s(22), 0x12FFFFFF);
+        int previewW = W - detailW - 48, panelH = H - 138;
+        int panel = alpha(config.clickGuiStyle.panelsColor, config.clickGuiStyle.panelsOpacity);
+        surface(g, 16, 88, previewW, panelH, corner(12), panel, 0.9f);
+        outline(g, 16, 88, previewW, panelH, corner(12), chromeBorder());
+        surface(g, detailX, 88, detailW, panelH, corner(12), panel, 0.93f);
+        outline(g, detailX, 88, detailW, panelH, corner(12), chromeBorder());
         int pad = s(20);
         WorkspacePaint.title(g, font, "Appearance", detailX + pad, 88 + pad, CONTROL_TEXT);
-        smallText(g, font, "Make the workspace yours.", detailX + pad, 88 + pad + s(34), CONTROL_MUTED);
+        smallText(g, font, "Colors, corners, size and motion.", detailX + pad, 88 + pad + s(34), CONTROL_MUTED);
         String[] surfaces = {"Global", "Panels", "Cards", "Tab bar"};
         int segmentY = 88 + pad + s(65), segmentW = (detailW - pad * 2) / 4;
         for (int i = 0; i < surfaces.length; i++) {
             int item = i, sx = detailX + pad + segmentW * i;
             surface(g, sx, segmentY, segmentW - s(2), s(32), s(6), appearanceSurface == i ? alpha(config.accentColor, .25) : CONTROL, 0.78f);
-            smallText(g, font, surfaces[i], sx + (segmentW - WorkspacePaint.smallWidth(font, surfaces[i])) / 2f, segmentY + s(10), CONTROL_TEXT);
+            smallText(g, font, surfaces[i], sx + (segmentW - WorkspacePaint.smallWidth(font, surfaces[i])) / 2f, midSmall(segmentY, s(32)), CONTROL_TEXT);
             hit("surface" + i, sx, segmentY, segmentW, s(32), () -> { appearanceSurface = item; detailScroll = detailScrollTarget = 0; });
         }
         int sampleW = Math.min(s(440), previewW - s(48)), sampleH = s(appearanceSurface == 3 ? 92 : 250);
@@ -1497,7 +1527,7 @@ public final class DonutScreen extends Screen {
         outline(g, sampleX, sampleY, sampleW, sampleH, s((float) style.rounding), 0x26FFFFFF);
         text(g, font, appearanceSurface == 3 ? "Modules     HUD     Appearance" : "Module preview", sampleX + s(20), sampleY + s(20), CONTROL_TEXT);
         if (appearanceSurface != 3) {
-            text(g, font, "A live preview of your theme", sampleX + s(20), sampleY + s(52), CONTROL_MUTED);
+            text(g, font, "Module settings", sampleX + s(20), sampleY + s(52), CONTROL_MUTED);
             round(g, sampleX + s(12), sampleY + s(90), sampleW - s(24), s(34), s(7), alpha(config.accentColor, .14));
             text(g, font, "Selected module", sampleX + s(22), sampleY + s(99), CONTROL_TEXT);
             text(g, font, "Inactive module", sampleX + s(22), sampleY + s(146), CONTROL_MUTED);
@@ -1505,7 +1535,7 @@ public final class DonutScreen extends Screen {
             round(g, sampleX + s(22), sampleY + sampleH - s(37), (sampleW - s(44)) * .6f, s(3), s(2), alpha(config.accentColor, 1));
             round(g, sampleX + s(22) + (sampleW - s(44)) * .6f - s(5), sampleY + sampleH - s(41), s(10), s(10), s(5), CONTROL_TEXT);
         }
-        smallText(g, font, "LIVE PREVIEW", 16 + s(24), 88 + s(24), CONTROL_MUTED);
+        smallText(g, font, "Preview", 16 + s(24), 88 + s(24), DIM);
         detailTop = segmentY + s(46);
         detailBottom = 88 + panelH - pad;
         clampDetailScroll();
@@ -1534,6 +1564,7 @@ public final class DonutScreen extends Screen {
             settingToggle(g, "liquidGlass", "Frosted liquid glass", 0,
                     () -> style.liquidGlass, () -> style.liquidGlass = !style.liquidGlass);
             slider(g, "uiScale", "UI scale", 0, () -> style.scale, value -> style.scale = value, .75, 1.5, .05, "%");
+            slider(g, "hudScale", "HUD panel size", 0, () -> style.hudScale, value -> style.hudScale = value, .6, 1.6, .05, "%");
             slider(g, "animationSpeed", "Animation speed", 0, () -> style.animationSpeed, value -> style.animationSpeed = value, 0, 2, .1, "x");
             settingToggle(g, "particles", "Ambient particles", 0, () -> config.clickGuiParticles, () -> config.clickGuiParticles = !config.clickGuiParticles);
             section(g, "Profiles", 0);
@@ -1817,7 +1848,7 @@ public final class DonutScreen extends Screen {
         if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
             if (scannerMethodMenu) { scannerMethodMenu = false; }
             else if (colorEditor != null) closeColor();
-            else if (searchFocused) { searchFocused = false; query = ""; contentProgress = 0; }
+            else if (searchFocused) { searchFocused = false; query = ""; refreshResults(); }
             else onClose();
             return true;
         }
@@ -1848,16 +1879,16 @@ public final class DonutScreen extends Screen {
         if (searchFocused) {
             if (event.key() == GLFW.GLFW_KEY_V && event.hasControlDown()) {
                 String pasted = minecraft.keyboardHandler.getClipboard().replaceAll("[\\p{Cntrl}]", "");
-                query = (query + pasted).substring(0, Math.min(64, query.length() + pasted.length())); contentProgress = 0; return true;
+                query = (query + pasted).substring(0, Math.min(64, query.length() + pasted.length())); refreshResults(); return true;
             }
-            if (event.key() == GLFW.GLFW_KEY_BACKSPACE) { query = removeLastCharacter(query); contentProgress = 0; return true; }
+            if (event.key() == GLFW.GLFW_KEY_BACKSPACE) { query = removeLastCharacter(query); refreshResults(); return true; }
             if (event.key() == GLFW.GLFW_KEY_ENTER) {
                 searchFocused = false;
                 int first = searching() ? firstMatch() : -1;
                 if (first >= 0) selectModule(first); // Enter opens the top result's settings.
                 return true;
             }
-            if (event.key() == GLFW.GLFW_KEY_A && (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0) { query = ""; contentProgress = 0; return true; }
+            if (event.key() == GLFW.GLFW_KEY_A && (event.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0) { query = ""; refreshResults(); return true; }
         }
         if (event.key() == GLFW.GLFW_KEY_TAB && !hits.isEmpty()) {
             int index = -1;
@@ -1930,7 +1961,7 @@ public final class DonutScreen extends Screen {
         }
         if (searchFocused && event.isAllowedChatCharacter() && query.length() < 64) {
             query += event.codepointAsString();
-            contentProgress = 0;
+            refreshResults();
             return true;
         }
         return false;

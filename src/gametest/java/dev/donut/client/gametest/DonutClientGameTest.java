@@ -75,17 +75,15 @@ public final class DonutClientGameTest implements FabricClientGameTest {
         Path first = screenshot(context, "donut-logo-spin-a");
         context.waitTicks(12);
         Path second = screenshot(context, "donut-logo-spin-b");
-        require(changed(first, second, 1134, 220, 100, 100) > 100,
-                "The category-header donut did not spin");
-        require(changed(first, second, 322, 148, 28, 28) > 8,
+        // The 2026-11 restyle keeps one donut: the small logo beside "Donut Client" in the header.
+        require(changed(first, second, 320, 149, 28, 28) > 8,
                 "The name-logo donut did not spin");
         context.runOnClient(client -> config.clickGuiStyle.animationSpeed = 0);
         context.waitTicks(2);
         Path stillA = screenshot(context, "donut-logo-reduced-motion-a");
         context.waitTicks(12);
         Path stillB = screenshot(context, "donut-logo-reduced-motion-b");
-        require(changedArt(stillA, stillB, 1134, 220, 100, 100) == 0
-                        && changedArt(stillA, stillB, 322, 148, 28, 28) == 0,
+        require(changedArt(stillA, stillB, 320, 149, 28, 28) == 0,
                 "The donut ignored reduced-motion settings");
         context.runOnClient(client -> config.clickGuiStyle.animationSpeed = 1);
     }

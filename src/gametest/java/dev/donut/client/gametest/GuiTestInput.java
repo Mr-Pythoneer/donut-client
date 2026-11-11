@@ -149,7 +149,7 @@ final class GuiTestInput {
             Bounds tile = context.computeOnClient(client -> {
                 DonutScreen screen = screen(client.screen);
                 Bounds card = find(screen, "module" + module), toggle = find(screen, "enable" + module);
-                require(card != null && card.h == 78 && toggle != null, "Tile controls are inaccessible: " + module);
+                require(card != null && card.h == DonutScreen.TILE_H && toggle != null, "Tile controls are inaccessible: " + module);
                 require(card.x >= number(screen, "CX") && toggle.x >= card.x + card.w
                                 && toggle.x + toggle.w <= number(screen, "CX") + number(screen, "CW"),
                         "Tile selection overlaps its toggle or leaves the grid");
@@ -244,7 +244,7 @@ final class GuiTestInput {
     private static boolean fullyVisible(ClientGameTestContext context, String id) {
         return context.computeOnClient(client -> {
             Bounds hit = find(screen(client.screen), id);
-            return hit != null && (!id.matches("module\\d+") || hit.h == 78);
+            return hit != null && (!id.matches("module\\d+") || hit.h == DonutScreen.TILE_H);
         });
     }
 

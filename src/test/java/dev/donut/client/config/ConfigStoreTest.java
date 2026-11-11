@@ -128,7 +128,7 @@ class ConfigStoreTest {
         assertNotNull(config.chunkFinder);
         assertFalse(config.freecam.enabled);
         assertFalse(config.fullbright.enabled);
-        assertTrue(config.clickGuiParticles);
+        assertFalse(config.clickGuiParticles);
         assertEquals(1, config.freecam.speed);
     }
 }

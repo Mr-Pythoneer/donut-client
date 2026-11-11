@@ -22,7 +22,7 @@ public final class ClientConfig {
     public HotbarSettings hotbar = new HotbarSettings();
     public int accentColor = 0x56DCCB;
     public ClickGuiStyle clickGuiStyle = new ClickGuiStyle();
-    public boolean clickGuiParticles = true;
+    public boolean clickGuiParticles = false;
     public boolean showHud = true;
 
 
