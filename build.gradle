@@ -44,7 +44,25 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
     inputs.property('storageEspTestsOnly', providers.gradleProperty('storageEspTestsOnly').orElse('false'))
     inputs.property('qolTestsOnly', providers.gradleProperty('qolTestsOnly').orElse('false'))
     inputs.property('testingGroundsOnly', providers.gradleProperty('testingGroundsOnly').orElse('false'))
+    inputs.property('uiPreviewOnly', providers.gradleProperty('uiPreviewOnly').orElse('false'))
+    inputs.property('gametestSkip', providers.gradleProperty('gametestSkip').orElse(''))
     doLast {
+        // -PgametestSkip=ClassA,ClassB leaves known-broken suites out of an otherwise full run.
+        def skip = providers.gradleProperty('gametestSkip').orElse('').get().split(',').findAll { it }
+        if (!skip.isEmpty()) {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = data.entrypoints['fabric-client-gametest'].findAll { entry ->
+                !skip.any { entry.endsWith('.' + it) } }
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        }
+        // Developer tool: screenshots of the HUD panels and click GUI for visual review. Not a test.
+        if (providers.gradleProperty('uiPreviewOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = ['dev.donut.client.gametest.UiPreviewGameTest']
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        } else
         // Developer tool: builds run/saves/donut-testing-grounds for ./gradlew runClient. Not a test.
         if (providers.gradleProperty('testingGroundsOnly').orElse('false').get() == 'true') {
             def manifest = new File(destinationDir, 'fabric.mod.json')
