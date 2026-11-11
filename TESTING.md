@@ -374,6 +374,25 @@ The Freecam runtime test compares both the actual client player and integrated s
 - Freecam interaction queues were cleared; disabling restored the original player input and camera. A server teleport received during Freecam remained authoritative after disabling, and disconnect cleanup reset activation.
 - External multiplayer servers, third-party shader packs, and alternate renderers have not been tested.
 
+## Testing grounds (manual play-testing)
+
+Build a ready-made world with an area for each module, then open the development client straight into it. The development client uses an offline dev username, and it doesn't touch your normal Minecraft or launcher installs.
+
+```bash
+./gradlew runClientGameTest -PtestingGroundsOnly=true
+./gradlew runClient --args="--quickPlaySingleplayer donut-testing-grounds"
+```
+
+The first command writes `run/saves/donut-testing-grounds`: a creative, peaceful superflat world with cheats on, frozen at noon. Signs label each area:
+
+- **Hub (spawn):** directions, and a chest of worn tools and armor. Your inventory also starts with worn gear for Durability Alert.
+- **East, x 18-44:** Storage ESP. One of every kind, a normal and a trapped double chest, a copper chest, minecarts and a chest boat, a closed stone hut with storage inside, a buried stash under the red wool at x 40, and non-storage lookalikes.
+- **West, x -44 to -18:** Freecam. A 40-block hollow tower and a sealed room with a beacon inside.
+- **South, z 18-44:** ore field. Exposed and buried ores (including deepslate emerald/coal and ancient debris) with hidden lava and water pockets, for BlockESP, Base Finder and a future Auto Miner.
+- **North:** a lit Nether portal at z -20 (dimension changes and linked coordinates), and a red tower with a gold block 150 blocks away for Zoom.
+
+`run/` is gitignored. The first launch of a fresh `run/` folder shows Minecraft's accessibility welcome screen: choose **Continue**, and pick the world from Singleplayer if it doesn't open by itself.
+
 ## Gameplay checks
 
 Use a separate creative singleplayer world with commands enabled:
