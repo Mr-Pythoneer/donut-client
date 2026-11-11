@@ -277,7 +277,8 @@ public final class AutoMinerController {
         switch (result) {
             case ARRIVED -> state = State.MINING;
             case NO_PATH -> {
-                if (config.autoMiner.includeBuried) { state = State.TUNNELING; step = null; tunnelDug = 0; }
+                // tunnelDug is per target (reset when one is chosen), so pausing cannot reset the tunnel limit.
+                if (config.autoMiner.includeBuried) { state = State.TUNNELING; step = null; }
                 else rejectTarget("no walkable path");
             }
             case STUCK -> { if (++stuck >= 3) rejectTarget("stuck on the way"); }
