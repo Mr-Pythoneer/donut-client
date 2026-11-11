@@ -96,7 +96,10 @@ public final class DonutClientGameTest implements FabricClientGameTest {
             int count = 0, sampled = 0;
             for (int py = y; py < y + h; py++) for (int px = x; px < x + w; px++) {
                 int color = first.getRGB(px, py), r = color >> 16 & 255, g = color >> 8 & 255, blue = color & 255;
-                if (r > 100 && (r > g * 1.25 && blue > g * 1.1 || r > g * 1.4 && r > blue * 1.5)) {
+                // Blue glaze, or the orange-brown dough.
+                boolean glaze = blue > 120 && blue > r * 1.3 && blue > g * 1.05;
+                boolean dough = r > 100 && r > g * 1.4 && r > blue * 1.5;
+                if (glaze || dough) {
                     sampled++;
                     if (color != second.getRGB(px, py)) count++;
                 }
