@@ -9,6 +9,7 @@
     "fabric-client-gametest": [
       "dev.donut.client.gametest.QualityOfLifeGameTest",
       "dev.donut.client.gametest.QualityOfLifeGuiGameTest",
+      "dev.donut.client.gametest.AutoMinerGameTest",
       "dev.donut.client.gametest.StorageEspGameTest",
       "dev.donut.client.gametest.StorageEspGuiGameTest",
       "dev.donut.client.gametest.StaffDetectorGameTest",
