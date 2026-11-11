@@ -64,6 +64,20 @@ final class WorkspacePaint {
         return scaledWidth(font, value, TITLE);
     }
 
+    /** Y to pass to {@link #text}/{@link #smallText} so the text's capitals sit centred in a box. */
+    static float centered(float top, float height, int size) {
+        return top + height / 2 - capCenter(size) * fontScale;
+    }
+
+    /** Distance in unscaled pixels from the draw position to the middle of a capital letter. */
+    static float capCenter(int size) {
+        return CAP_CENTER * size + CAP_CENTER_BIAS;
+    }
+
+    static final int BODY_SIZE = 16, SMALL_SIZE = 13, STRONG_SIZE = 17, TITLE_SIZE = 24;
+    // Measured from rendered Geist glyphs (see DonutClientGameTest's text-centring check).
+    private static final float CAP_CENTER = .74f, CAP_CENTER_BIAS = 1;
+
     static void right(GuiGraphics g, Font font, String value, int right, int y, int color) {
         text(g, font, value, right - width(font, value), y, color);
     }

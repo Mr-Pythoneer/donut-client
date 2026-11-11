@@ -24,14 +24,9 @@ public final class FreecamHud {
         if (lines.isEmpty()) return;
         // Status lines stay visible; only a speed-only readout fades.
         float alpha = status != null ? 1 : speedAlpha;
-        int w = lines.stream().mapToInt(client.font::width).max().orElse(60) + 16;
-        int h = lines.size() * 11 + 8;
-        int x = (graphics.guiWidth() - w) / 2, y = graphics.guiHeight() - 72 - h;
-        UiPaint.round(graphics, x, y, w, h, 5, alphaColor(0xC0141C27, alpha));
-        for (int i = 0; i < lines.size(); i++) {
-            int color = i == 0 && speedAlpha > 0.05f ? alphaColor(0xFFE5EFF9, speedAlpha) : 0xFFB3C3D3;
-            graphics.drawCenteredString(client.font, lines.get(i), graphics.guiWidth() / 2, y + 5 + i * 11, color);
-        }
+        var panel = HudPanel.of(null, null).opacity(alpha);
+        for (int i = 0; i < lines.size(); i++) panel.text(lines.get(i), i == 0 && speedAlpha > 0.05f ? HudPanel.TITLE : HudPanel.TEXT);
+        panel.draw(graphics, config, HudPanel.Anchor.ABOVE_HOTBAR);
     }
 
     static String speedLine(double speed, double boost) {
@@ -53,8 +48,4 @@ public final class FreecamHud {
         return parts.isEmpty() ? null : String.join(" | ", parts);
     }
 
-    private static int alphaColor(int argb, float alpha) {
-        int a = Math.round(((argb >>> 24) & 0xFF) * Math.clamp(alpha, 0, 1));
-        return a << 24 | (argb & 0xFFFFFF);
-    }
 }

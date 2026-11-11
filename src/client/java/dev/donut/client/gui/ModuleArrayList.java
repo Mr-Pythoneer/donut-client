@@ -31,7 +31,7 @@ public final class ModuleArrayList {
         if (!config.showHud) { reset(); return; }
         Minecraft client = Minecraft.getInstance();
         float guiScale = client.getWindow().getGuiScale();
-        float s = (float) (Math.round(Math.clamp(client.getWindow().getHeight() / 1080.0 * config.clickGuiStyle.scale, .6, 3.5) * 20) / 20.0);
+        float s = HudPanel.scale(config);
         long now = System.nanoTime();
         float dt = lastFrame == 0 ? 1f / 60 : Math.clamp((now - lastFrame) / 1_000_000_000f, 0, .1f);
         lastFrame = now;
@@ -50,16 +50,17 @@ public final class ModuleArrayList {
                 float target = enabled[i] ? 1 : 0;
                 animation[i] += (target - animation[i]) * k;
                 if (Math.abs(animation[i] - target) < .005f) animation[i] = target;
-                if (animation[i] > 0) ordered.add(new Row(i, NAMES[i], WorkspacePaint.strongWidth(font, NAMES[i]), animation[i]));
+                if (animation[i] > 0) ordered.add(new Row(i, NAMES[i], WorkspacePaint.smallWidth(font, NAMES[i]), animation[i]));
             }
             ordered.sort(Comparator.comparingDouble((Row row) -> -row.nameWidth).thenComparing(Row::name));
             rows = List.copyOf(ordered);
-            float right = client.getWindow().getWidth() - Math.round(10 * s), y = Math.round(10 * s);
-            float fullHeight = 18 * s, radius = 6 * s;
+            float right = client.getWindow().getWidth() - Math.round(HudPanel.MARGIN * s), y = Math.round(HudPanel.MARGIN * s);
+            // Row height leaves room for the glyphs' full height so neighbouring rows never overlap.
+            float fullHeight = Math.round(HudPanel.ROW * s + 2 * s), radius = HudPanel.RADIUS * s;
             List<Step> steps = new ArrayList<>();
             for (Row row : ordered) {
                 float open = row.animation * row.animation * (3 - 2 * row.animation);
-                float w = Math.round(12 * s + row.nameWidth);
+                float w = Math.round(HudPanel.PAD_X * 2 * s + row.nameWidth);
                 float top = Math.round(y), bottom = Math.round(y + fullHeight * open);
                 y += fullHeight * open;
                 if (bottom > top) {
@@ -69,12 +70,12 @@ public final class ModuleArrayList {
             }
             drawBackground(g, steps, radius, s);
             for (Step step : steps) {
-                float x = Math.round(step.right - 6 * s - step.row.nameWidth);
-                float textY = Math.round(step.top + Math.floor((fullHeight - 17 * s) / 2) - (fullHeight - step.height()) / 2);
+                float x = Math.round(step.right - HudPanel.PAD_X * s - step.row.nameWidth);
+                // Centre in the row's full height; rows that are still opening are clipped by the scissor below.
+                float textY = WorkspacePaint.centered(step.bottom - fullHeight, fullHeight, WorkspacePaint.SMALL_SIZE);
                 g.enableScissor((int) Math.floor(step.left), (int) step.top, (int) Math.ceil(step.right), (int) step.bottom);
                 float alpha = step.row.animation * step.row.animation;
-                WorkspacePaint.strong(g, font, step.row.name, (int) x + 1, (int) textY + 1, scaleAlpha(0x8C000000, alpha));
-                WorkspacePaint.strong(g, font, step.row.name, (int) x, (int) textY, scaleAlpha(0xFFFFFFFF, alpha));
+                WorkspacePaint.smallText(g, font, step.row.name, x, textY, scaleAlpha(HudPanel.TITLE, alpha));
                 g.disableScissor();
             }
         } finally {
@@ -84,19 +85,9 @@ public final class ModuleArrayList {
     }
 
     private static void drawBackground(GuiGraphics g, List<Step> steps, float radius, float s) {
-        for (int k = 3; k >= 1; k--) {
-            float spread = k * Math.max(1, s);
-            for (int i = 0; i < steps.size(); i++) {
-                Step q = steps.get(i);
-                float t = q.top - (i == 0 ? spread : 0);
-                float b = q.bottom + (i == steps.size() - 1 ? spread + Math.max(1, s) : 0);
-                SmoothGeometry.corners(g, q.left - spread, t, q.width() + spread * 2, b - t,
-                        radius + spread, corners(steps, i), scaleAlpha(0x0D000000, q.alpha));
-            }
-        }
         for (int i = 0; i < steps.size(); i++) {
             Step q = steps.get(i), up = i > 0 ? steps.get(i - 1) : null, down = i + 1 < steps.size() ? steps.get(i + 1) : null;
-            int color = scaleAlpha(0x9916181D, q.alpha);
+            int color = scaleAlpha(HudPanel.SURFACE, q.alpha);
             SmoothGeometry.corners(g, q.left, q.top, q.width(), q.height(), radius, corners(steps, i), color);
             if (up != null && up.left < q.left - .5f) fillet(g, q.left, q.top, -1, 1, Math.min(radius, Math.min(q.left - up.left, q.height())), color);
             if (up != null && up.right > q.right + .5f) fillet(g, q.right, q.top, 1, 1, Math.min(radius, Math.min(up.right - q.right, q.height())), color);

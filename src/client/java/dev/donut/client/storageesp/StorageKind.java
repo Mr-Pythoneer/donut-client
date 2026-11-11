@@ -33,6 +33,16 @@ public enum StorageKind {
         this.color = color;
     }
 
+    /** Compact label for the HUD. */
+    public String shortLabel() {
+        return switch (this) {
+            case CHESTS -> "Chests"; case TRAPPED_CHESTS -> "Trapped"; case BARRELS -> "Barrels";
+            case SHULKER_BOXES -> "Shulkers"; case ENDER_CHESTS -> "Ender"; case HOPPERS -> "Hoppers";
+            case DROPPERS_DISPENSERS -> "Droppers"; case FURNACES -> "Furnaces"; case BREWING_STANDS -> "Brewing";
+            case OTHER -> "Other"; case STORAGE_ENTITIES -> "Carts/boats";
+        };
+    }
+
     /** Classifies a received block state; null for anything that is not storage. */
     public static StorageKind of(BlockState state) {
         if (state == null) return null;

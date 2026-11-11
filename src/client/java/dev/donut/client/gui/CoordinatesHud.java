@@ -12,41 +12,46 @@ import net.minecraft.client.gui.GuiGraphics;
 public final class CoordinatesHud {
     private CoordinatesHud() { }
 
-    public static List<String> lines(Minecraft client, ClientConfig config) {
+    /** Label/value rows, e.g. ("XYZ", "3.7, -60.0, -1.0"). */
+    public record Line(String label, String value) { }
+
+    public static List<Line> lines(Minecraft client, ClientConfig config) {
         var settings = config.coordinates;
         var player = client.player;
-        var lines = new ArrayList<String>();
+        var lines = new ArrayList<Line>();
         String dimension = client.level.dimension().identifier().toString();
-        lines.add("XYZ " + CoordinateText.position(player.getX(), player.getY(), player.getZ()));
-        if (settings.showFacing) lines.add("Facing " + CoordinateText.facing(player.getYRot()) + " | " + CoordinateText.yaw(player.getYRot()));
-        if (settings.showChunk) lines.add(CoordinateText.chunk(player.getBlockX(), player.getBlockZ()));
+        lines.add(new Line("XYZ", xyz(player.getX(), player.getY(), player.getZ())));
+        if (settings.showFacing) lines.add(new Line("Facing", CoordinateText.facing(player.getYRot()) + "  " + CoordinateText.yaw(player.getYRot()) + "\u00B0"));
+        if (settings.showChunk) lines.add(new Line("Chunk", (player.getBlockX() >> 4) + ", " + (player.getBlockZ() >> 4)
+                + "  in " + (player.getBlockX() & 15) + ", " + (player.getBlockZ() & 15)));
         if (settings.showLinked) {
             String linked = CoordinateText.linked(dimension, player.getX(), player.getZ());
-            lines.add(linked != null ? linked : CoordinateText.dimensionName(dimension));
+            if (linked != null) {
+                int colon = linked.indexOf(':');
+                lines.add(new Line(linked.substring(0, colon), linked.substring(colon + 1).trim()));
+            } else lines.add(new Line("Dimension", CoordinateText.dimensionName(dimension)));
         }
         if (settings.showBiome) client.level.getBiome(player.blockPosition()).unwrapKey()
-                .ifPresent(key -> lines.add("Biome " + CoordinateText.dimensionName(key.identifier().toString())));
+                .ifPresent(key -> lines.add(new Line("Biome", CoordinateText.dimensionName(key.identifier().toString()))));
         var freecam = FreecamController.getInstance();
         if (settings.showFreecam && freecam != null && freecam.isActive()) {
             var camera = freecam.position();
-            lines.add("Camera " + CoordinateText.position(camera.x, camera.y, camera.z));
-            lines.add("Camera facing " + CoordinateText.facing(freecam.yaw()));
+            lines.add(new Line("Camera", xyz(camera.x, camera.y, camera.z)));
+            lines.add(new Line("Camera facing", CoordinateText.facing(freecam.yaw())));
         }
         return lines;
+    }
+
+    static String xyz(double x, double y, double z) {
+        return String.format(java.util.Locale.ROOT, "%.1f, %.1f, %.1f", x, y, z);
     }
 
     public static void render(GuiGraphics graphics, ClientConfig config) {
         Minecraft client = Minecraft.getInstance();
         if (!config.coordinates.enabled || !config.showHud || client.options.hideGui || client.player == null
                 || client.level == null || client.screen != null || client.getDebugOverlay().showDebugScreen()) return;
-        var text = lines(client, config);
-        int w = text.stream().mapToInt(client.font::width).max().orElse(80) + 16;
-        int h = text.size() * 11 + 10;
-        boolean bottomRight = "Bottom right".equals(config.coordinates.anchor);
-        int x = bottomRight ? graphics.guiWidth() - w - 8 : 8;
-        int y = bottomRight ? graphics.guiHeight() - h - 8 : 8;
-        UiPaint.round(graphics, x, y, w, h, 5, 0xC0141C27);
-        for (int i = 0; i < text.size(); i++)
-            graphics.drawString(client.font, text.get(i), x + 8, y + 6 + i * 11, i == 0 ? 0xFFE5EFF9 : 0xFFB3C3D3, false);
+        var panel = HudPanel.of(null, null);
+        for (Line line : lines(client, config)) panel.row(line.label(), line.value(), HudPanel.TITLE);
+        panel.draw(graphics, config, "Bottom right".equals(config.coordinates.anchor) ? HudPanel.Anchor.BOTTOM_RIGHT : HudPanel.Anchor.TOP_LEFT);
     }
 }

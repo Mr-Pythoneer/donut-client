@@ -59,10 +59,10 @@ public final class QualityOfLifeGameTest implements FabricClientGameTest {
             context.runOnClient(mc -> {
                 config.coordinates.enabled = true;
                 var lines = CoordinatesHud.lines(mc, config);
-                require(lines.getFirst().equals("XYZ -33.5 / 64.0 / 100.5"), "Position line: " + lines.getFirst());
-                require(lines.stream().anyMatch(l -> l.startsWith("Facing West (-X)")), "Facing line missing: " + lines);
-                require(lines.contains("Chunk -3, 6 | in chunk 14, 4"), "Chunk line missing: " + lines);
-                require(lines.contains("Nether: -5, 12"), "Nether line missing: " + lines);
+                require(lines.getFirst().equals(new CoordinatesHud.Line("XYZ", "-33.5, 64.0, 100.5")), "Position line: " + lines.getFirst());
+                require(lines.stream().anyMatch(l -> l.label().equals("Facing") && l.value().startsWith("West (-X)")), "Facing line missing: " + lines);
+                require(lines.contains(new CoordinatesHud.Line("Chunk", "-3, 6  in 14, 4")), "Chunk line missing: " + lines);
+                require(lines.contains(new CoordinatesHud.Line("Nether", "-5, 12")), "Nether line missing: " + lines);
             });
             context.waitTick();
             Path hud = screenshot(context, "qol-01-coordinates");

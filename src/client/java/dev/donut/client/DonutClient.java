@@ -239,6 +239,7 @@ public final class DonutClient implements ClientModInitializer {
 
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "status"), (graphics, delta) -> {
             Minecraft client = Minecraft.getInstance();
+            dev.donut.client.gui.HudPanel.newFrame();
             if (!config.showHud || client.player == null || client.screen != null || client.options.hideGui) {
                 ModuleArrayList.reset();
                 return;

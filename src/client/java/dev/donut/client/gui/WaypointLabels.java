@@ -44,15 +44,25 @@ public final class WaypointLabels {
         int width = g.guiWidth(), height = g.guiHeight();
         int alpha = Math.max(40, settings.opacity);
         int count = Math.min(shown.size(), MAX_LABELS);
-        // Farthest first so nearer labels are painted on top.
-        for (int i = count - 1; i >= 0; i--) {
-            var point = shown.get(i);
-            Vec3 center = point.center();
-            if (center.distanceToSqr(eye) > range * range) continue;
-            float[] anchor = project(viewProjection, center.add(0, LABEL_LIFT, 0).subtract(eye), width, height);
-            if (anchor == null) continue;
-            String text = label(point, mc.player.position(), settings.showDistance);
-            draw(g, mc, text, anchor[0], anchor[1], point.waypoint().color, alpha);
+        float guiScale = (float) mc.getWindow().getGuiScale(), s = HudPanel.scale(config);
+        float previousFont = WorkspacePaint.pushScale(s);
+        g.pose().pushMatrix();
+        try {
+            // Labels share the HUD panels' window-relative size instead of growing with the GUI scale.
+            g.pose().scale(1 / guiScale, 1 / guiScale);
+            // Farthest first so nearer labels are painted on top.
+            for (int i = count - 1; i >= 0; i--) {
+                var point = shown.get(i);
+                Vec3 center = point.center();
+                if (center.distanceToSqr(eye) > range * range) continue;
+                float[] anchor = project(viewProjection, center.add(0, LABEL_LIFT, 0).subtract(eye), width, height);
+                if (anchor == null) continue;
+                String text = label(point, mc.player.position(), settings.showDistance);
+                draw(g, mc, text, anchor[0] * guiScale, anchor[1] * guiScale, s, point.waypoint().color, alpha);
+            }
+        } finally {
+            g.pose().popMatrix();
+            WorkspacePaint.popScale(previousFont);
         }
     }
 
@@ -65,16 +75,18 @@ public final class WaypointLabels {
         return text.toString();
     }
 
-    private static void draw(GuiGraphics g, Minecraft mc, String text, float x, float y, int rgb, int alpha) {
+    private static void draw(GuiGraphics g, Minecraft mc, String text, float x, float y, float s, int rgb, int alpha) {
         var font = mc.font;
-        String clipped = font.plainSubstrByWidth(text, Math.max(40, g.guiWidth() / 3));
-        int w = font.width(clipped) + 8, h = 12;
-        int left = Math.round(x - w / 2f), top = Math.round(y - h - 3);
-        left = Math.clamp(left, 2, Math.max(2, g.guiWidth() - w - 2));
-        top = Math.clamp(top, 2, Math.max(2, g.guiHeight() - h - 2));
-        UiPaint.round(g, left, top, w, h, 4, Math.round(alpha * 0.75f) << 24 | 0x141C27);
-        UiPaint.round(g, x - 1.5f, y - 1.5f, 3, 3, 1.5f, alpha << 24 | rgb & 0xFFFFFF);
-        g.drawString(font, clipped, left + 4, top + 2, alpha << 24 | rgb & 0xFFFFFF, false);
+        float windowW = mc.getWindow().getWidth(), windowH = mc.getWindow().getHeight();
+        String clipped = text;
+        while (WorkspacePaint.smallWidth(font, clipped) > windowW / 3 && clipped.length() > 4) clipped = clipped.substring(0, clipped.length() - 2);
+        float pad = 5 * s, h = 14 * s, swatch = 5 * s;
+        float w = pad * 2 + swatch + 4 * s + WorkspacePaint.smallWidth(font, clipped);
+        float left = Math.clamp(x - w / 2, 2, Math.max(2, windowW - w - 2)), top = Math.clamp(y - h - 4 * s, 2, Math.max(2, windowH - h - 2));
+        UiPaint.round(g, left, top, w, h, 3 * s, Math.round(alpha * 0.8f) << 24 | 0x0D1015);
+        UiPaint.round(g, left + pad, top + (h - swatch) / 2, swatch, swatch, 1.5f * s, alpha << 24 | rgb & 0xFFFFFF);
+        UiPaint.round(g, x - 1.5f * s, y - 1.5f * s, 3 * s, 3 * s, 1.5f * s, alpha << 24 | rgb & 0xFFFFFF);
+        WorkspacePaint.smallText(g, font, clipped, left + pad + swatch + 4 * s, WorkspacePaint.centered(top, h, WorkspacePaint.SMALL_SIZE), Math.max(alpha, 160) << 24 | 0xF2F4F7);
     }
 
     /** Projection times the camera's view rotation, as vanilla builds it; positions must be camera-relative. */

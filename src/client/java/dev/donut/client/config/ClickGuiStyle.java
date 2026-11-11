@@ -3,6 +3,8 @@ package dev.donut.client.config;
 /** Presentation preferences only; module state and module behavior live in their existing settings. */
 public final class ClickGuiStyle {
     public double scale = 1;
+    /** Size of in-game HUD panels relative to a 1080p window, independent of Minecraft's GUI scale. */
+    public double hudScale = 1;
     public double rounding = 10;
     public double backgroundDim = .25;
     public double animationSpeed = 1;
@@ -16,6 +18,7 @@ public final class ClickGuiStyle {
 
     public void sanitize() {
         scale = clamp(scale, .75, 1.5, 1);
+        hudScale = clamp(hudScale, .6, 1.6, 1);
         rounding = clamp(rounding, 0, 16, 10);
         backgroundDim = clamp(backgroundDim, 0, .8, .25);
         animationSpeed = clamp(animationSpeed, 0, 2, 1);
