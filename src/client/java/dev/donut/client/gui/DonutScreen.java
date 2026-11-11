@@ -1485,6 +1485,12 @@ public final class DonutScreen extends Screen {
             slider(g, "uiScale", "UI scale", 0, () -> style.scale, value -> style.scale = value, .75, 1.5, .05, "%");
             slider(g, "animationSpeed", "Animation speed", 0, () -> style.animationSpeed, value -> style.animationSpeed = value, 0, 2, .1, "x");
             settingToggle(g, "particles", "Ambient particles", 0, () -> config.clickGuiParticles, () -> config.clickGuiParticles = !config.clickGuiParticles);
+            section(g, "Profiles", 0);
+            button(g, "configProfiles", "Export / import settings", rowX, settingsCursor, rowW, s(34), () -> {
+                flush(); minecraft.setScreen(new ConfigProfileScreen(this, config, save));
+            });
+            settingsCursor += s(44);
+            help(g, "Save all Donut settings and shortcuts to a local file, or load one. Importing never switches modules on and backs up your current settings first.");
         } else {
             section(g, surfaces[appearanceSurface], 0);
             colorRow(g, "Color", 0, () -> appearanceSurface == 1 ? style.panelsColor : appearanceSurface == 2 ? style.cardsColor : style.tabBarColor,
