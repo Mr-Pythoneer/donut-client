@@ -60,11 +60,11 @@ public final class ProgressBarGameTest implements FabricClientGameTest {
             GuiTestInput.click(context, "tab0");
             GuiTestInput.click(context, "search");
             GuiTestInput.type(context, "progress");
-            require(!GuiTestInput.visible(context, "module7"), "Progress Bar appeared in Visual modules");
+            require(GuiTestInput.visible(context, "module7"), "Global search did not find Progress Bar from the Visual tab");
             GuiTestInput.clickWithFade(context, "tab3", "contentProgress");
             GuiTestInput.click(context, "search");
             GuiTestInput.type(context, "progress");
-            require(!GuiTestInput.visible(context, "module7"), "Progress Bar appeared in Blatant modules");
+            require(GuiTestInput.visible(context, "module7"), "Global search did not find Progress Bar from the Blatant tab");
             GuiTestInput.clickWithFade(context, "tab4", "contentProgress");
             require(GuiTestInput.visible(context, "module7"), "Progress Bar is missing from Streaming");
             require(!GuiTestInput.visible(context, "module0"), "Streaming contains unrelated Visual modules");

@@ -8,6 +8,40 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-10 (Phase 3 quality-of-life, blue donut)
+
+- On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build --no-daemon` passed with **209 unit tests**, and `runClientGameTest -PqolTestsOnly=true --no-daemon` passed QualityOfLifeGameTest, QualityOfLifeGuiGameTest and ModuleKeybindGameTest. No EULA flag was created or changed.
+- Unit tests:
+  - Coordinates: facing from yaw (including wrapping and boundaries), chunk and in-chunk positions for negative blocks, 8:1 Nether/Overworld conversion with floor, readable dimension names.
+  - Zoom: scroll steps and clamps, smooth convergence and snapping back to 1×.
+  - Durability: only damageable items, at or below the threshold, with exact uses left.
+  - Waypoints: server keys, linked dimensions, conversion, visibility filtering, numbered names, nearest-first order, label projection.
+  - Profiles: round trip, modules never enabled by import, live on/off states kept, malformed/unknown/oversized files rejected, foreign shortcut names dropped, export/list/backup.
+  - Every new settings class: defaults (disabled), persistence, clamps.
+  - `ModuleSearchIndexTest` parses DonutScreen and fails if any inspector label is not searchable.
+- Runtime suite, through the production instances in a disposable world:
+  - The coordinates text is exact for a player at -33.5/64/100.5 facing west (chunk -3, 6, in chunk 14, 4; Nether -5, 12), and the HUD draws in the top-left.
+  - Holding the zoom key reaches 4× and changes the frame. One scroll notch gives exactly 5× without changing the hotbar slot. The same mouse movement turns less than half as far while zoomed. Release returns to 1× and leaves the saved level unchanged.
+  - A diamond pickaxe with 61 uses left raises a "Main hand" warning; a fresh pickaxe clears it.
+  - Two waypoints behind a brick wall draw outlines, beams and "Test Base · 10m" labels through it. The second is auto-named "Test Base 2". In the Nether they appear converted and marked linked, and disappear when that option is off. Removal clears them.
+  - Client and server player positions still match at the end.
+- GUI suite, with actual native input:
+  - Searching "tracer" from the Streaming tab shows Amethyst Scanner, BlockESP and Storage ESP labelled "Setting: Tracer(s)". Enter opens the top result.
+  - The four new modules: found by search, start disabled, switch on and save, favorite, and capture a shortcut. Zoom smoothing and the Coordinates corner persist.
+  - The waypoint manager's Add here creates a waypoint.
+  - Profiles: export writes settings and `key.donut.*` shortcuts. Import needs the second confirm click, restores exported values, leaves modules off, and writes a `donut-client.json.before-import-*` backup. The test removes its files afterwards.
+- Search bug found and fixed: in the first implementation, an operator-precedence mistake let the Blatant and Streaming tabs keep filtering search results. The GUI suite caught it before release.
+- Existing suites updated to global search, because they asserted the old category-only search: NameHiderGameTest, HotbarGameTest and ProgressBarGameTest now expect the module to be found from other tabs. Category tabs without a search query still filter as before; the Fly, Fullbright and AutoBuilder category checks are unchanged and pass.
+- Donut logo: blue glaze, spinning icing-up around its own axis. DonutClientGameTest's animation check now samples blue glaze and dough. It passes, and the spin frames differ while reduced motion stays identical.
+- Full regression on this branch, across two runs: every runtime suite passed except the pre-existing **SpectreBuilderGuiGameTest** (`Missing control libraryMode`, same as on `main`). One run hit Fabric's documented network-synchronizer race in HotbarGameTest; the unchanged rerun of the remaining 15 suites passed. FlyMultiplayerGameTest skipped (no EULA flag).
+- Client-side audit of everything added on this branch:
+  - Production code only observes received `Clientbound*` chunk and block packets after vanilla applies them. It never constructs or sends packets.
+  - It never writes the player's position, rotation, abilities or game mode. Zoom only scales local look input.
+  - It never edits the world, and its only files are local config, profiles and backups.
+  - The server-side `FakePlayer` exists only in FreecamGameTest, and test classes are excluded from the release jar.
+- Visually reviewed captures of the coordinates HUD, durability card, waypoint markers/labels, setting search results, coordinates inspector, waypoint manager and profile import screen.
+- Not covered: external servers, two singleplayer worlds with the same name (they share waypoints by design), and label sway from view bobbing.
+
 ## Verified on 2026-11-10 (Storage ESP)
 
 - On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build --no-daemon` passed with **170 unit tests**. Then `runClientGameTest -PstorageEspTestsOnly=true --no-daemon` passed StorageEspGameTest, StorageEspGuiGameTest and the existing ModuleKeybindGameTest on the first run. No dedicated-server EULA flag was created or changed.

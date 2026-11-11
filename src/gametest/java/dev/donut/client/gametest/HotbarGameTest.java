@@ -100,11 +100,11 @@ public final class HotbarGameTest implements FabricClientGameTest {
         GuiTestInput.click(context, "tab0");
         GuiTestInput.click(context, "search");
         GuiTestInput.type(context, "hotbar");
-        require(!GuiTestInput.visible(context, "module9"), "Hotbar appeared in Visual modules");
+        require(GuiTestInput.visible(context, "module9"), "Global search did not find Hotbar from the Visual tab");
         GuiTestInput.clickWithFade(context, "tab3", "contentProgress");
         GuiTestInput.click(context, "search");
         GuiTestInput.type(context, "hotbar");
-        require(!GuiTestInput.visible(context, "module9"), "Hotbar appeared in Blatant modules");
+        require(GuiTestInput.visible(context, "module9"), "Global search did not find Hotbar from the Blatant tab");
         GuiTestInput.clickWithFade(context, "tab4", "contentProgress");
         GuiTestInput.assertModuleRows(context, 7, 8, 9);
         GuiTestInput.assertSelectionAnimation(context, MODULE);
