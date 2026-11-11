@@ -8,6 +8,34 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-10 (Storage ESP)
+
+- On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build --no-daemon` passed with **170 unit tests**. Then `runClientGameTest -PstorageEspTestsOnly=true --no-daemon` passed StorageEspGameTest, StorageEspGuiGameTest and the existing ModuleKeybindGameTest on the first run. No dedicated-server EULA flag was created or changed.
+- Unit tests:
+  - Classification is checked for **every block state** of chest, copper chest stages, trapped chest, ender chest, barrel, shulker boxes, hopper, dropper, dispenser, furnace, blast furnace, smoker, brewing stand, crafter, decorated pot and chiseled bookshelf. Lookalikes (crafting table, bookshelf, spawner, piston, observer, lectern and others) are rejected.
+  - Double-chest pairing is checked in all four facings, and exactly one half reports the pair. Missing, broken, same-type, wrong-facing, misplaced and trapped/normal mixed partners stay single. Trapped and copper doubles pair.
+  - Nearest-N keeps the closest targets in order, as an immutable list.
+  - Settings cover defaults (disabled, every kind on), persistence, clamps, colour masking, unknown/null map entries, and the re-publish key ignoring colours, opacity and tracers.
+- The runtime suite runs the production scanner, renderer and HUD in a disposable integrated world.
+  - Fixtures: one block of each kind, a real connected double chest, a chest minecart, and non-storage neighbours.
+  - All 17 targets are counted with exact per-kind totals. The double chest is one merged box about 1.9 blocks wide, and targets are sorted nearest first.
+  - Rendering: the highlighted frame differs from an identical opacity-0 frame, and tracers add more changed pixels.
+  - Live updates: breaking one half of the double chest leaves a single chest, and placing or removing a barrel updates the count through block packets.
+  - Settings: a kind toggle, nearest-16 (the farthest chest is dropped) and a 16-block range all re-publish without rescanning chunks.
+  - Clearing: disable clears every cache, teleporting 1000 blocks away unloads targets, returning rescans, and the production disconnect hook clears everything.
+- The GUI suite uses actual native input:
+  - search (`chest`, and `shulker` at GUI scale 2), favorite, the hopper toggle, tracers, the range and target-limit sliders, and the module switch (all persisted);
+  - shortcut capture, the real production shortcut toggling and restoring state, and the "Storage ESP" array-list row.
+- Visually reviewed actual 1280x800 captures: outlines through walls in each kind's colour, the merged double chest, crafting table/bookshelf/spawner left unmarked, the count/nearest HUD and the settings inspector.
+- Full regression on this branch:
+  - Every runtime suite in the registry passed across two runs, except **SpectreBuilderGuiGameTest**. It fails with `Missing control libraryMode` identically on an untouched `main` checkout, so it is pre-existing and unrelated to these changes. It was left out of the second run so the remaining suites could run.
+  - In that run, AutoBuilderEngineGameTest hit the documented Fabric "Network synchronizer in invalid state" race. A rerun of FreecamGameTest, AutoBuilderEngineGameTest, ChunkFinderGameTest and ChunkFinderGuiGameTest passed unchanged.
+  - FlyMultiplayerGameTest skipped as usual because no EULA flag was present.
+- Remaining scope:
+  - No external server, anti-xray server or real multiplayer session was tested.
+  - Range was checked against the integrated server's view distance only.
+  - No large-base throughput or memory benchmark was measured. Per-tick work is bounded by design (8 chunks / 2 ms).
+
 ## Verified on 2026-11-10 (Freecam quality-of-life)
 
 - On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build compileGametestJava --no-daemon` passed, with **160 unit tests**. Then `runClientGameTest -PfreecamTestsOnly=true --no-daemon` passed FreecamGameTest and the existing ModuleKeybindGameTest. The focused flag changes processed test resources only. No dedicated-server EULA flag was created or changed.
