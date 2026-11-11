@@ -15,6 +15,13 @@
   "key.donut.toggle_block_esp": "Toggle BlockESP",
   "key.donut.toggle_staff_detector": "Toggle Staff Detector",
   "key.donut.toggle_storage_esp": "Toggle Storage ESP",
+  "key.donut.toggle_coordinates": "Toggle Coordinates HUD",
+  "key.donut.toggle_waypoints": "Toggle Waypoints",
+  "key.donut.toggle_zoom": "Toggle Zoom module",
+  "key.donut.toggle_durability_alert": "Toggle Durability Alert",
+  "key.donut.zoom": "Zoom (hold)",
+  "key.donut.waypoints_menu": "Open waypoints",
+  "key.donut.waypoint_add_here": "Add waypoint here",
   "key.donut.acknowledge_sound": "Acknowledge sound alert",
   "key.donut.mute_sound": "Mute sound alerts for 60 seconds",
   "key.donut.sound_history": "Open sound activity history"

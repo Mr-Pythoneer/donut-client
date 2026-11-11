@@ -45,6 +45,10 @@ import org.lwjgl.glfw.GLFW;
 
 public final class DonutClient implements ClientModInitializer {
     public static final String MOD_ID = "donut";
+    private static ClientConfig activeConfig;
+
+    /** The live configuration (for runtime tests and helper screens); null before initialization. */
+    public static ClientConfig config() { return activeConfig; }
     private ConfigStore store;
     private ClientConfig config;
     private ChunkFinderScanner chunkScanner;
@@ -54,6 +58,9 @@ public final class DonutClient implements ClientModInitializer {
     private BlockEspController blockEsp;
     private dev.donut.client.staff.StaffDetectorController staffDetector;
     private dev.donut.client.storageesp.StorageEspScanner storageEsp;
+    private dev.donut.client.waypoints.WaypointController waypoints;
+    private dev.donut.client.zoom.ZoomController zoom;
+    private dev.donut.client.durability.DurabilityAlertController durabilityAlert;
 
     @Override
     public void onInitializeClient() {
@@ -61,6 +68,7 @@ public final class DonutClient implements ClientModInitializer {
         ProgressBarHud.initialize();
         store = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("donut-client.json"));
         config = store.load();
+        activeConfig = config;
         new HotbarBlur(config);
         new NameHiderController(config);
         chunkScanner = new ChunkFinderScanner(config);
@@ -69,6 +77,9 @@ public final class DonutClient implements ClientModInitializer {
         soundDetector = new dev.donut.client.sound.SoundDetectorController(config);
         blockEsp = new BlockEspController(config);
         storageEsp = new dev.donut.client.storageesp.StorageEspScanner(config);
+        waypoints = new dev.donut.client.waypoints.WaypointController(config, this::save).chunkFinder(chunkScanner);
+        zoom = new dev.donut.client.zoom.ZoomController(config, this::save);
+        durabilityAlert = new dev.donut.client.durability.DurabilityAlertController(config);
         staffDetector = new dev.donut.client.staff.StaffDetectorController(config, this::save);
         ClientTickEvents.END_CLIENT_TICK.register(auto -> {
             dev.donut.client.spectrebuilder.BuilderPlacement.tick(auto);
@@ -104,10 +115,20 @@ public final class DonutClient implements ClientModInitializer {
         KeyMapping blocks = bind("toggle_block_esp", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping staff = bind("toggle_staff_detector", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping storage = bind("toggle_storage_esp", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping coordinates = bind("toggle_coordinates", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping waypointToggle = bind("toggle_waypoints", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping zoomToggle = bind("toggle_zoom", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping durability = bind("toggle_durability_alert", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping zoomHold = bind("zoom", GLFW.GLFW_KEY_Z, category);
+        KeyMapping waypointMenu = bind("waypoints_menu", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping waypointAdd = bind("waypoint_add_here", InputConstants.UNKNOWN.getValue(), category);
+        zoom.setKey(zoomHold);
+        ModuleKeybinds.setZoomKey(zoomHold);
         KeyMapping acknowledgeSound = bind("acknowledge_sound", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping muteSound = bind("mute_sound", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping soundHistory = bind("sound_history", InputConstants.UNKNOWN.getValue(), category);
-        ModuleKeybinds.initialize(camera, builder, chunks, bright, flight, progress, names, hotbar, amethyst, light, sounds, blocks, staff, storage);
+        ModuleKeybinds.initialize(camera, builder, chunks, bright, flight, progress, names, hotbar, amethyst, light, sounds, blocks, staff, storage,
+                coordinates, waypointToggle, zoomToggle, durability);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ProgressTimers.tick(config);
@@ -186,6 +207,26 @@ public final class DonutClient implements ClientModInitializer {
                 config.storageEsp.enabled = !config.storageEsp.enabled; save();
             }
             storageEsp.tick(client);
+            for (int module = 16; module <= 19; module++) {
+                if (!ModuleKeybinds.consumePress(client, module) || inputBlocked || client.screen != null || client.player == null) continue;
+                switch (module) {
+                    case 16 -> config.coordinates.enabled = !config.coordinates.enabled;
+                    case 17 -> config.waypoints.enabled = !config.waypoints.enabled;
+                    case 18 -> config.zoom.enabled = !config.zoom.enabled;
+                    default -> config.durabilityAlert.enabled = !config.durabilityAlert.enabled;
+                }
+                save();
+            }
+            while (waypointMenu.consumeClick()) if (!inputBlocked && client.screen == null && client.player != null)
+                client.setScreen(new dev.donut.client.gui.WaypointScreen(null, config, this::save));
+            while (waypointAdd.consumeClick()) if (!inputBlocked && client.screen == null && client.player != null) {
+                var added = waypoints.addHere();
+                // A local action-bar notice only; nothing is sent to the server.
+                client.player.displayClientMessage(Component.literal(added == null ? "Waypoint limit reached"
+                        : "Waypoint added: " + added.name + " (" + added.x + ", " + added.y + ", " + added.z + ")"), true);
+            }
+            zoom.tick(client);
+            durabilityAlert.tick(client);
         });
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
@@ -220,11 +261,17 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.gui.SoundAlertHud.render(graphics, config, soundDetector.alerts()));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "block_esp"), (graphics, delta) ->
                 BlockEspHud.render(graphics, config, blockEsp));
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "coordinates"), (graphics, delta) ->
+                dev.donut.client.gui.CoordinatesHud.render(graphics, config));
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "waypoint_labels"), (graphics, delta) ->
+                dev.donut.client.gui.WaypointLabels.render(graphics, config));
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "durability_alert"), (graphics, delta) ->
+                dev.donut.client.gui.DurabilityAlertHud.render(graphics, config, durabilityAlert));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "storage_esp"), (graphics, delta) ->
                 dev.donut.client.gui.StorageEspHud.render(graphics, config, storageEsp));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "staff_detector"), (graphics, delta) ->
                 dev.donut.client.gui.StaffDetectorHud.render(graphics, config, staffDetector));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
             fullbright.close();

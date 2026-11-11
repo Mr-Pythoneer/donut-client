@@ -31,6 +31,10 @@ public final class ModuleSearchIndex {
         put(13, "Deepslate emerald", "Deepslate coal", "Prediction radius", "Opacity", "Tracers", "Coordinates / distance HUD", "Emerald color", "Coal color", "Edit world seed", "Rescan predictions", "World seed", "Targets", "Display", "Predictions");
         put(14, "Spectator alerts", "Invisible nearby alerts", "Nearby range", "Check /msg completions", "Check interval", "Matching samples", "Roster removal alerts", "Presence HUD", "Chat alerts", "HUD staff rows", "Hint lifetime", "Alert cooldown", "Staff list / evidence", "Staff identity", "Observations", "Display");
         put(15, "Range", "Nearest targets shown", "Opacity", "Tracers", "Count / nearest HUD", "Rescan loaded chunks", "Targets", "Display", "Scan");
+        put(16, "Facing direction", "Chunk position", "Nether / Overworld coordinates", "Biome", "Freecam camera position", "Bottom-right corner", "Lines", "Placement");
+        put(17, "Beams", "Name labels", "Distance in labels", "Show Nether / Overworld waypoints converted", "Opacity", "Label range", "Manage waypoints", "Add waypoint here", "Waypoints", "Display");
+        put(18, "Zoom level", "Smooth transition", "Scroll to adjust while held", "Remember scrolled level", "Lower mouse sensitivity", "Zoom", "Your controls");
+        put(19, "Warn at or below", "Include armor", "Include offhand", "Local warning chime", "Warning");
         // Labels generated from enums at runtime in the inspector.
         List<String> storage = new ArrayList<>(SETTINGS.getOrDefault(15, List.of()));
         for (StorageKind kind : StorageKind.values()) { storage.add(kind.label); storage.add(kind.label + " color"); }

@@ -13,6 +13,7 @@ public final class ClientConfig {
     public CoordinatesSettings coordinates = new CoordinatesSettings();
     public ZoomSettings zoom = new ZoomSettings();
     public DurabilityAlertSettings durabilityAlert = new DurabilityAlertSettings();
+    public WaypointSettings waypoints = new WaypointSettings();
     public AmethystSettings amethyst = new AmethystSettings();
     public FullbrightSettings fullbright = new FullbrightSettings();
     public FlySettings fly = new FlySettings();
@@ -57,6 +58,8 @@ public final class ClientConfig {
         zoom.sanitize();
         if (durabilityAlert == null) durabilityAlert = new DurabilityAlertSettings();
         durabilityAlert.sanitize();
+        if (waypoints == null) waypoints = new WaypointSettings();
+        waypoints.sanitize();
         progressBar.sanitize();
         hotbar.sanitize();
         accentColor &= 0xFFFFFF;

@@ -481,6 +481,10 @@ public final class DonutScreen extends Screen {
             case 12 -> "sound detector sounddetector audio player activity alarm warning chest piston machine machinery";
             case 13 -> "blockesp block esp ore ores seed predictor prediction deepslate emerald coal rare";
             case 14 -> "staff detector staffdetector moderator admin spectator invisible vanish presence roster";
+            case 16 -> "coordinates coords xyz position facing direction chunk nether overworld biome hud";
+            case 17 -> "waypoints waypoint markers beacon beam mark location home base save coordinates";
+            case 18 -> "zoom spyglass optifine fov magnify scope";
+            case 19 -> "durability alert warning armor tool break damage repair low";
             case 15 -> "storage esp storageesp chest chests double chest trapped barrel shulker ender hopper dropper dispenser furnace smoker blast brewing crafter pot bookshelf minecart boat container stash";
             default -> "autobuilder auto builder schematic litematic building materials navigation";
         };
@@ -496,7 +500,11 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawModuleSettings(GuiGraphics g, int index) {
-        if (index == 15) drawStorageEspSettings(g);
+        if (index == 19) drawDurabilityAlertSettings(g);
+        else if (index == 18) drawZoomSettings(g);
+        else if (index == 17) drawWaypointSettings(g);
+        else if (index == 16) drawCoordinatesSettings(g);
+        else if (index == 15) drawStorageEspSettings(g);
         else if (index == 14) drawStaffDetectorSettings(g);
         else if (index == 13) drawBlockEspSettings(g);
         else if (index == 12) drawSoundDetectorSettings(g);
@@ -646,6 +654,10 @@ public final class DonutScreen extends Screen {
             case 13 -> "Predict deepslate emerald and coal from your world seed";
             case 14 -> "Observe known staff and possible hidden presence";
             case 15 -> "Highlight chests, barrels, shulkers and other storage";
+            case 16 -> "Show position, facing, chunk and Nether coordinates";
+            case 17 -> "Save places and see them through walls";
+            case 18 -> "Hold a key to zoom your view";
+            case 19 -> "Warn before tools and armor break";
             default -> "Move through your world with vanilla flight";
         };
     }
@@ -690,10 +702,14 @@ public final class DonutScreen extends Screen {
         }
     }
 
-    private boolean enabled(int index) { return index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
-    private boolean favorite(int index) { return index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
+    private boolean enabled(int index) { return index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
+    private boolean favorite(int index) { return index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
     private void toggleFavorite(int index) {
-        if (index == 15) config.storageEsp.favorite = !config.storageEsp.favorite;
+        if (index == 19) config.durabilityAlert.favorite = !config.durabilityAlert.favorite;
+        else if (index == 18) config.zoom.favorite = !config.zoom.favorite;
+        else if (index == 17) config.waypoints.favorite = !config.waypoints.favorite;
+        else if (index == 16) config.coordinates.favorite = !config.coordinates.favorite;
+        else if (index == 15) config.storageEsp.favorite = !config.storageEsp.favorite;
         else if (index == 14) config.staffDetector.favorite = !config.staffDetector.favorite;
         else if (index == 13) config.blockEsp.favorite = !config.blockEsp.favorite;
         else if (index == 12) config.soundDetector.favorite = !config.soundDetector.favorite;
@@ -710,7 +726,15 @@ public final class DonutScreen extends Screen {
         if (tab == 1) contentProgress = 0;
     }
     private void toggleEnabled(int index) {
-        if (index == 15) {
+        if (index == 19) {
+            change(() -> config.durabilityAlert.enabled = !config.durabilityAlert.enabled);
+        } else if (index == 18) {
+            change(() -> config.zoom.enabled = !config.zoom.enabled);
+        } else if (index == 17) {
+            change(() -> config.waypoints.enabled = !config.waypoints.enabled);
+        } else if (index == 16) {
+            change(() -> config.coordinates.enabled = !config.coordinates.enabled);
+        } else if (index == 15) {
             change(() -> config.storageEsp.enabled = !config.storageEsp.enabled);
         } else if (index == 14) {
             change(() -> config.staffDetector.enabled = !config.staffDetector.enabled);
@@ -744,7 +768,7 @@ public final class DonutScreen extends Screen {
         }
     }
     private String name(int index) {
-        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; default -> "AutoBuilder"; };
+        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; default -> "AutoBuilder"; };
     }
 
     private void drawHotbarSettings(GuiGraphics g, int ignored) {
@@ -1042,6 +1066,33 @@ public final class DonutScreen extends Screen {
         settingToggle(g, "bottomRight", "Bottom-right corner", 0, () -> "Bottom right".equals(value.anchor),
                 () -> value.anchor = "Bottom right".equals(value.anchor) ? "Top left" : "Bottom right");
         help(g, "Hidden while F3, F1 or a menu is open, and with the HUD switched off. Reads only your own position.");
+    }
+
+    private void drawWaypointSettings(GuiGraphics g) {
+        var value = config.waypoints;
+        var controller = dev.donut.client.waypoints.WaypointController.get();
+        section(g, "Waypoints", 0);
+        button(g, "m17.manage", "Manage waypoints", rowX, settingsCursor, rowW, s(34), () -> {
+            flush(); minecraft.setScreen(new WaypointScreen(this, config, save));
+        });
+        settingsCursor += s(44);
+        button(g, "m17.addHere", "Add waypoint here", rowX, settingsCursor, rowW, s(34), () -> {
+            if (controller != null && minecraft.player != null) controller.addHere();
+        });
+        settingsCursor += s(44);
+        int count = controller == null || minecraft.level == null ? 0 : controller.forCurrentServer().size();
+        help(g, minecraft.level == null ? "Join a world to add waypoints. Each server and world keeps its own list."
+                : count + " saved for this server or world (limit " + dev.donut.client.config.WaypointSettings.MAX_WAYPOINTS + " in total).");
+        section(g, "Display", 0);
+        settingToggle(g, "beams", "Beams", 0, () -> value.beams, () -> value.beams = !value.beams);
+        settingToggle(g, "labels", "Name labels", 0, () -> value.labels, () -> value.labels = !value.labels);
+        settingToggle(g, "showDistance", "Distance in labels", 0, () -> value.showDistance, () -> value.showDistance = !value.showDistance);
+        settingToggle(g, "showLinkedDimension", "Show Nether / Overworld waypoints converted", 0,
+                () -> value.showLinkedDimension, () -> value.showLinkedDimension = !value.showLinkedDimension);
+        slider(g, "opacity", "Opacity", 0, () -> value.opacity, next -> value.opacity = (int) next, 0, 255, 1, "");
+        slider(g, "labelRange", "Label range", 0, () -> value.labelRange, next -> value.labelRange = (int) next,
+                dev.donut.client.config.WaypointSettings.MIN_LABEL_RANGE, dev.donut.client.config.WaypointSettings.MAX_LABEL_RANGE, 32, " blocks");
+        help(g, "Waypoints are saved only in your local Donut config. Assign Open waypoints and Add waypoint here in Minecraft Controls.");
     }
 
     private void drawZoomSettings(GuiGraphics g) {

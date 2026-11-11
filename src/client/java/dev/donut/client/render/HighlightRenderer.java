@@ -198,6 +198,22 @@ public final class HighlightRenderer implements AutoCloseable {
                 if (settings.tracers) lines.add(new DrawLine(Vec3.ZERO, bounds.getCenter().subtract(camera), outline, true));
             }
         }
+        var waypoints = dev.donut.client.waypoints.WaypointController.get();
+        if (waypoints != null && config.waypoints.enabled && config.waypoints.opacity > 0) {
+            var settings = config.waypoints;
+            for (var shown : waypoints.shown()) {
+                int rgb = shown.waypoint().color & 0xFFFFFF;
+                int outline = dev.donut.client.waypoints.Waypoints.argb(rgb, settings.opacity);
+                AABB marker = new AABB(shown.blockPos()).inflate(.02);
+                if (context.frustum().isVisible(marker)) boxes.add(new DrawBox(marker.move(-camera.x, -camera.y, -camera.z),
+                        argb(rgb, settings.opacity / 255.0 * .2), outline, 2f, true));
+                if (settings.beams) {
+                    AABB beam = dev.donut.client.waypoints.Waypoints.beam(shown, context.world().getMinY(), context.world().getMaxY());
+                    if (context.frustum().isVisible(beam)) boxes.add(new DrawBox(beam.move(-camera.x, -camera.y, -camera.z),
+                            argb(rgb, settings.opacity / 255.0 * .1), argb(rgb, settings.opacity / 255.0 * .45), 1.2f, true));
+                }
+            }
+        }
         var soundDetector = dev.donut.client.sound.SoundDetectorController.get();
         if (soundDetector != null) for (var incident : soundDetector.markers()) {
             AABB bounds = new AABB(incident.x() - .3, incident.y(), incident.z() - .3,

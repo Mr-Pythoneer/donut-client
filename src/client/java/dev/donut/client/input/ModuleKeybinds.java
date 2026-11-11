@@ -13,7 +13,7 @@ import java.util.Set;
 public final class ModuleKeybinds {
     // Preserve the remaining module IDs used by GUI controls.
     public static final int FIRST_MODULE = 2;
-    public static final int MODULE_COUNT = 14;
+    public static final int MODULE_COUNT = 18;
     public static final int MODULE_LIMIT = FIRST_MODULE + MODULE_COUNT;
     private static final KeyMapping[] MODULES = new KeyMapping[MODULE_LIMIT];
     private static final boolean[] pressed = new boolean[MODULE_LIMIT];
@@ -26,7 +26,8 @@ public final class ModuleKeybinds {
                                   KeyMapping fullbright, KeyMapping fly, KeyMapping progressBar,
                                   KeyMapping nameHider, KeyMapping hotbar, KeyMapping amethyst, KeyMapping lightDebug,
                                   KeyMapping soundDetector, KeyMapping blockEsp, KeyMapping staffDetector,
-                                  KeyMapping storageEsp) {
+                                  KeyMapping storageEsp, KeyMapping coordinates, KeyMapping waypoints,
+                                  KeyMapping zoom, KeyMapping durabilityAlert) {
         Arrays.fill(MODULES, null);
         MODULES[2] = freecam;
         MODULES[3] = autoBuilder;
@@ -42,6 +43,10 @@ public final class ModuleKeybinds {
         MODULES[13] = blockEsp;
         MODULES[14] = staffDetector;
         MODULES[15] = storageEsp;
+        MODULES[16] = coordinates;
+        MODULES[17] = waypoints;
+        MODULES[18] = zoom;
+        MODULES[19] = durabilityAlert;
         Arrays.fill(pressed, false);
         heldInputs.clear();
         discardNextTick = false;
