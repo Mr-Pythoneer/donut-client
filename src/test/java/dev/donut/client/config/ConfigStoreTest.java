@@ -92,7 +92,7 @@ class ConfigStoreTest {
         ClientConfig loaded = new ConfigStore(file).load();
         assertEquals(0xFFFFFF, loaded.accentColor);
         assertFalse(loaded.showHud);
-        assertEquals(5, loaded.freecam.speed);
+        assertEquals(10, loaded.freecam.speed);
         assertEquals(1, loaded.freecam.boostMultiplier);
         assertTrue(loaded.fullbright.enabled);
         assertNotNull(loaded.clickGuiStyle);
