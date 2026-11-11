@@ -53,6 +53,7 @@ public final class DonutClient implements ClientModInitializer {
     private dev.donut.client.sound.SoundDetectorController soundDetector;
     private BlockEspController blockEsp;
     private dev.donut.client.staff.StaffDetectorController staffDetector;
+    private dev.donut.client.storageesp.StorageEspScanner storageEsp;
 
     @Override
     public void onInitializeClient() {
@@ -67,6 +68,7 @@ public final class DonutClient implements ClientModInitializer {
         lightDebug = new dev.donut.client.light.LightDebugScanner(config);
         soundDetector = new dev.donut.client.sound.SoundDetectorController(config);
         blockEsp = new BlockEspController(config);
+        storageEsp = new dev.donut.client.storageesp.StorageEspScanner(config);
         staffDetector = new dev.donut.client.staff.StaffDetectorController(config, this::save);
         ClientTickEvents.END_CLIENT_TICK.register(auto -> {
             dev.donut.client.spectrebuilder.BuilderPlacement.tick(auto);
@@ -101,10 +103,11 @@ public final class DonutClient implements ClientModInitializer {
         KeyMapping sounds = bind("toggle_sound_detector", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping blocks = bind("toggle_block_esp", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping staff = bind("toggle_staff_detector", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping storage = bind("toggle_storage_esp", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping acknowledgeSound = bind("acknowledge_sound", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping muteSound = bind("mute_sound", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping soundHistory = bind("sound_history", InputConstants.UNKNOWN.getValue(), category);
-        ModuleKeybinds.initialize(camera, builder, chunks, bright, flight, progress, names, hotbar, amethyst, light, sounds, blocks, staff);
+        ModuleKeybinds.initialize(camera, builder, chunks, bright, flight, progress, names, hotbar, amethyst, light, sounds, blocks, staff, storage);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ProgressTimers.tick(config);
@@ -179,6 +182,10 @@ public final class DonutClient implements ClientModInitializer {
                 config.staffDetector.enabled = !config.staffDetector.enabled; save();
             }
             staffDetector.tick(client);
+            if (ModuleKeybinds.consumePress(client, 15) && !inputBlocked && client.screen == null && client.player != null) {
+                config.storageEsp.enabled = !config.storageEsp.enabled; save();
+            }
+            storageEsp.tick(client);
         });
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
@@ -213,9 +220,11 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.gui.SoundAlertHud.render(graphics, config, soundDetector.alerts()));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "block_esp"), (graphics, delta) ->
                 BlockEspHud.render(graphics, config, blockEsp));
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "storage_esp"), (graphics, delta) ->
+                dev.donut.client.gui.StorageEspHud.render(graphics, config, storageEsp));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "staff_detector"), (graphics, delta) ->
                 dev.donut.client.gui.StaffDetectorHud.render(graphics, config, staffDetector));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
             fullbright.close();
@@ -225,6 +234,7 @@ public final class DonutClient implements ClientModInitializer {
             save();
             lightDebug.close();
             blockEsp.close();
+            storageEsp.clear();
             soundDetector.disconnect();
             staffDetector.disconnect();
             renderer.close();

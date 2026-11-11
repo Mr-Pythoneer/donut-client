@@ -472,13 +472,15 @@ public final class DonutScreen extends Screen {
             case 12 -> "sound detector sounddetector audio player activity alarm warning chest piston machine machinery";
             case 13 -> "blockesp block esp ore ores seed predictor prediction deepslate emerald coal rare";
             case 14 -> "staff detector staffdetector moderator admin spectator invisible vanish presence roster";
+            case 15 -> "storage esp storageesp chest chests double chest trapped barrel shulker ender hopper dropper dispenser furnace smoker blast brewing crafter pot bookshelf minecart boat container stash";
             default -> "autobuilder auto builder schematic litematic building materials navigation";
         };
         return words.contains(query.toLowerCase(Locale.ROOT).trim());
     }
 
     private void drawModuleSettings(GuiGraphics g, int index) {
-        if (index == 14) drawStaffDetectorSettings(g);
+        if (index == 15) drawStorageEspSettings(g);
+        else if (index == 14) drawStaffDetectorSettings(g);
         else if (index == 13) drawBlockEspSettings(g);
         else if (index == 12) drawSoundDetectorSettings(g);
         else if (index == 11) drawLightDebugSettings(g);
@@ -626,6 +628,7 @@ public final class DonutScreen extends Screen {
             case 12 -> "Warn about nearby interactions, players and machinery";
             case 13 -> "Predict deepslate emerald and coal from your world seed";
             case 14 -> "Observe known staff and possible hidden presence";
+            case 15 -> "Highlight chests, barrels, shulkers and other storage";
             default -> "Move through your world with vanilla flight";
         };
     }
@@ -639,7 +642,7 @@ public final class DonutScreen extends Screen {
             line(g,x+5,y+6,x+10,y+2,tint);line(g,x+10,y+2,x+10,y+17,tint);line(g,x+10,y+17,x+5,y+13,tint);
             line(g,x+13,y+5,x+17,y+8,tint);line(g,x+17,y+8,x+13,y+13,tint);
         } else if (index == 2) camera(g, x, y, tint);
-        else if (index == 3 || index == 4 || index == 13) cube(g, x, y, 12, tint, .85, .14);
+        else if (index == 3 || index == 4 || index == 13 || index == 15) cube(g, x, y, 12, tint, .85, .14);
         else if (index == 5) {
             outline(g, x + 4, y + 4, 9, 9, 4, tint);
             line(g, x + 8, y, x + 8, y + 2, tint);
@@ -670,10 +673,11 @@ public final class DonutScreen extends Screen {
         }
     }
 
-    private boolean enabled(int index) { return index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
-    private boolean favorite(int index) { return index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
+    private boolean enabled(int index) { return index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
+    private boolean favorite(int index) { return index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
     private void toggleFavorite(int index) {
-        if (index == 14) config.staffDetector.favorite = !config.staffDetector.favorite;
+        if (index == 15) config.storageEsp.favorite = !config.storageEsp.favorite;
+        else if (index == 14) config.staffDetector.favorite = !config.staffDetector.favorite;
         else if (index == 13) config.blockEsp.favorite = !config.blockEsp.favorite;
         else if (index == 12) config.soundDetector.favorite = !config.soundDetector.favorite;
         else if (index == 11) config.lightDebug.favorite = !config.lightDebug.favorite;
@@ -689,7 +693,9 @@ public final class DonutScreen extends Screen {
         if (tab == 1) contentProgress = 0;
     }
     private void toggleEnabled(int index) {
-        if (index == 14) {
+        if (index == 15) {
+            change(() -> config.storageEsp.enabled = !config.storageEsp.enabled);
+        } else if (index == 14) {
             change(() -> config.staffDetector.enabled = !config.staffDetector.enabled);
         } else if (index == 13) {
             change(() -> config.blockEsp.enabled = !config.blockEsp.enabled);
@@ -721,7 +727,7 @@ public final class DonutScreen extends Screen {
         }
     }
     private String name(int index) {
-        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; default -> "AutoBuilder"; };
+        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; default -> "AutoBuilder"; };
     }
 
     private void drawHotbarSettings(GuiGraphics g, int ignored) {
@@ -1005,6 +1011,39 @@ public final class DonutScreen extends Screen {
         });
         settingsCursor += s(44);
         help(g, "Predicts original ore positions in the Overworld. Match the version that generated the chunks. Ores may already be mined; larger radii take longer.");
+    }
+
+    private void drawStorageEspSettings(GuiGraphics g) {
+        var value = config.storageEsp;
+        section(g, "Targets", 0);
+        for (var kind : dev.donut.client.storageesp.StorageKind.values()) {
+            settingToggle(g, "kind-" + kind.id, kind.label, 0, () -> value.kindEnabled(kind), () -> value.kinds.put(kind.id, !value.kindEnabled(kind)));
+            colorRow(g, kind.label + " color", 0, () -> value.kindColor(kind), next -> value.colors.put(kind.id, next & 0xFFFFFF));
+        }
+        help(g, "Double chests are outlined and counted once. Trapped chests never pair with normal chests.");
+        section(g, "Display", 0);
+        slider(g, "range", "Range", 0, () -> value.range, next -> value.range = (int) next,
+                dev.donut.client.config.StorageEspSettings.MIN_RANGE, dev.donut.client.config.StorageEspSettings.MAX_RANGE, 16, " blocks");
+        int loaded = minecraft.level == null ? 0 : dev.donut.client.storageesp.StorageEspScanner.loadedRadiusBlocks(minecraft);
+        help(g, minecraft.level == null ? "Only chunks the server has sent can be highlighted. Join a world to see the current limit."
+                : "Loaded radius here: about " + loaded + " blocks. The server's view distance is the real limit; farther storage is not on your client.");
+        slider(g, "maxTargets", "Nearest targets shown", 0, () -> value.maxTargets, next -> value.maxTargets = (int) next,
+                dev.donut.client.config.StorageEspSettings.MIN_TARGETS, dev.donut.client.config.StorageEspSettings.MAX_TARGETS, 16, "");
+        slider(g, "opacity", "Opacity", 0, () -> value.opacity, next -> value.opacity = (int) next, 0, 255, 1, "");
+        settingToggle(g, "tracers", "Tracers", 0, () -> value.tracers, () -> value.tracers = !value.tracers);
+        settingToggle(g, "showHud", "Count / nearest HUD", 0, () -> value.showHud, () -> value.showHud = !value.showHud);
+        section(g, "Scan", 0);
+        var scanner = dev.donut.client.storageesp.StorageEspScanner.get();
+        var snapshot = scanner == null ? null : scanner.snapshot();
+        help(g, !value.enabled || snapshot == null ? "Enable Storage ESP in a world to scan loaded chunks."
+                : snapshot.total() + " in range" + (snapshot.limited() ? ", nearest " + value.maxTargets + " shown" : "")
+                + (scanner.pendingChunks() > 0 ? " | " + scanner.pendingChunks() + " chunks queued" : ""));
+        button(g, "m15.rescan", "Rescan loaded chunks", rowX, settingsCursor, rowW, s(34), () -> {
+            var current = dev.donut.client.storageesp.StorageEspScanner.get();
+            if (current != null) current.rescan();
+        });
+        settingsCursor += s(44);
+        help(g, "Reads only blocks and entities already received. Scans a few chunks per tick and clears on disable, world change and disconnect.");
     }
 
     private void drawLightDebugSettings(GuiGraphics g) {

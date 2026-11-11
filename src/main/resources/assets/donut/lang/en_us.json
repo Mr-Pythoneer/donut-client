@@ -14,6 +14,7 @@
   "key.donut.toggle_sound_detector": "Toggle Sound Detector",
   "key.donut.toggle_block_esp": "Toggle BlockESP",
   "key.donut.toggle_staff_detector": "Toggle Staff Detector",
+  "key.donut.toggle_storage_esp": "Toggle Storage ESP",
   "key.donut.acknowledge_sound": "Acknowledge sound alert",
   "key.donut.mute_sound": "Mute sound alerts for 60 seconds",
   "key.donut.sound_history": "Open sound activity history"

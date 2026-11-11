@@ -186,6 +186,18 @@ public final class HighlightRenderer implements AutoCloseable {
                 if (settings.tracers) lines.add(new DrawLine(Vec3.ZERO, Vec3.atCenterOf(marker.pos()).subtract(camera), outline, true));
             }
         }
+        var storageEsp = dev.donut.client.storageesp.StorageEspScanner.get();
+        if (storageEsp != null && config.storageEsp.enabled && config.storageEsp.opacity > 0) {
+            var settings = config.storageEsp;
+            for (var target : storageEsp.snapshot().targets()) {
+                int rgb = settings.kindColor(target.kind()) & 0xFFFFFF;
+                int outline = settings.opacity << 24 | rgb;
+                AABB bounds = target.liveBounds().inflate(.004);
+                if (context.frustum().isVisible(bounds)) boxes.add(new DrawBox(bounds.move(-camera.x, -camera.y, -camera.z),
+                        argb(rgb, settings.opacity / 255.0 * .12), outline, 1.8f, true));
+                if (settings.tracers) lines.add(new DrawLine(Vec3.ZERO, bounds.getCenter().subtract(camera), outline, true));
+            }
+        }
         var soundDetector = dev.donut.client.sound.SoundDetectorController.get();
         if (soundDetector != null) for (var incident : soundDetector.markers()) {
             AABB bounds = new AABB(incident.x() - .3, incident.y(), incident.z() - .3,

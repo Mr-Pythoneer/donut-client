@@ -9,6 +9,15 @@ import net.minecraft.client.gui.GuiGraphics;
 
 public final class BlockEspHud {
     private BlockEspHud() { }
+
+    /** Height in GUI pixels of the panel {@link #render} draws, or 0 when hidden, so other HUDs can stack above it. */
+    public static int height(ClientConfig config) {
+        Minecraft client = Minecraft.getInstance();
+        var settings = config.blockEsp;
+        if (!settings.enabled || !settings.showHud || !config.showHud || client.options.hideGui || client.player == null || client.screen != null) return 0;
+        int lines = 2 + (settings.emerald ? 1 : 0) + (settings.coal ? 1 : 0);
+        return lines * 12 + 12;
+    }
     public static void render(GuiGraphics graphics, ClientConfig config, BlockEspController controller) {
         Minecraft client = Minecraft.getInstance();
         var settings = config.blockEsp;
