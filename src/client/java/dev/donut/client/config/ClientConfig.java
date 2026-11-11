@@ -9,6 +9,7 @@ public final class ClientConfig {
     public SoundDetectorSettings soundDetector = new SoundDetectorSettings();
     public StaffDetectorSettings staffDetector = new StaffDetectorSettings();
     public BlockEspSettings blockEsp = new BlockEspSettings();
+    public StorageEspSettings storageEsp = new StorageEspSettings();
     public AmethystSettings amethyst = new AmethystSettings();
     public FullbrightSettings fullbright = new FullbrightSettings();
     public FlySettings fly = new FlySettings();
@@ -45,6 +46,8 @@ public final class ClientConfig {
         staffDetector.sanitize();
         if (blockEsp == null) blockEsp = new BlockEspSettings();
         blockEsp.sanitize();
+        if (storageEsp == null) storageEsp = new StorageEspSettings();
+        storageEsp.sanitize();
         progressBar.sanitize();
         hotbar.sanitize();
         accentColor &= 0xFFFFFF;
