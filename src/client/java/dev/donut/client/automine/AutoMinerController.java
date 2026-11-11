@@ -69,6 +69,8 @@ public final class AutoMinerController {
     private int blockedTicks;
     /** Where mining last failed to land on the target; tunneling must move before trying from here again. */
     private BlockPos blockedAt;
+    /** The last block handed to the game mode's destroy calls. */
+    private BlockPos lastPressed;
     private int rescanDelay;
     private String lastSkip;
     private String lastStop;
@@ -154,6 +156,7 @@ public final class AutoMinerController {
         if (live && client.player != null && originalSlot >= 0) client.player.getInventory().setSelectedSlot(originalSlot);
         for (KeyMapping key : List.of(client.options.keyAttack, client.options.keyUse)) key.setDown(false);
         originalSlot = -1;
+        lastPressed = null;
         state = State.OFF;
         clearTarget();
         scanner.clear();
@@ -382,11 +385,23 @@ public final class AutoMinerController {
             return Break.WORKING;
         }
         Direction face = blockHit.getDirection();
-        // Exactly what Minecraft#continueAttack does while attack is held.
-        if (client.gameMode.continueDestroyBlock(pos, face)) {
+        var gameMode = client.gameMode;
+        if (!gameMode.isDestroying() && pos.equals(lastPressed)) {
+            // A fresh press on the block the game mode still remembers (after a pause or abort). Holding attack
+            // would resume it without a start packet; begin it like a click instead (Minecraft#startAttack), then
+            // continue in the same tick as vanilla does.
+            gameMode.startDestroyBlock(pos, face);
+            player.swing(InteractionHand.MAIN_HAND);
+            if (!level.getBlockState(pos).isAir() && gameMode.continueDestroyBlock(pos, face)) {
+                level.addBreakingBlockEffect(pos, face);
+                player.swing(InteractionHand.MAIN_HAND);
+            }
+        } else if (gameMode.continueDestroyBlock(pos, face)) {
+            // Exactly what Minecraft#continueAttack does while attack is held; it starts new targets itself.
             level.addBreakingBlockEffect(pos, face);
             player.swing(InteractionHand.MAIN_HAND);
         }
+        lastPressed = pos.immutable();
         BlockState after = level.getBlockState(pos);
         // Vanilla predicts the break locally (air, or water for a waterlogged block).
         if (after.isAir() || after != state && after.getCollisionShape(level, pos).isEmpty()) {
