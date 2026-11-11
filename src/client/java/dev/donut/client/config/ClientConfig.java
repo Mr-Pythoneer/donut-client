@@ -13,6 +13,7 @@ public final class ClientConfig {
     public CoordinatesSettings coordinates = new CoordinatesSettings();
     public ZoomSettings zoom = new ZoomSettings();
     public DurabilityAlertSettings durabilityAlert = new DurabilityAlertSettings();
+    public AutoMinerSettings autoMiner = new AutoMinerSettings();
     public WaypointSettings waypoints = new WaypointSettings();
     public AmethystSettings amethyst = new AmethystSettings();
     public FullbrightSettings fullbright = new FullbrightSettings();
@@ -58,6 +59,8 @@ public final class ClientConfig {
         zoom.sanitize();
         if (durabilityAlert == null) durabilityAlert = new DurabilityAlertSettings();
         durabilityAlert.sanitize();
+        if (autoMiner == null) autoMiner = new AutoMinerSettings();
+        autoMiner.sanitize();
         if (waypoints == null) waypoints = new WaypointSettings();
         waypoints.sanitize();
         progressBar.sanitize();
