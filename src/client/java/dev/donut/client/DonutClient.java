@@ -61,6 +61,7 @@ public final class DonutClient implements ClientModInitializer {
     private dev.donut.client.waypoints.WaypointController waypoints;
     private dev.donut.client.zoom.ZoomController zoom;
     private dev.donut.client.durability.DurabilityAlertController durabilityAlert;
+    private dev.donut.client.automine.AutoMinerController autoMiner;
 
     @Override
     public void onInitializeClient() {
@@ -80,6 +81,7 @@ public final class DonutClient implements ClientModInitializer {
         waypoints = new dev.donut.client.waypoints.WaypointController(config, this::save).chunkFinder(chunkScanner);
         zoom = new dev.donut.client.zoom.ZoomController(config, this::save);
         durabilityAlert = new dev.donut.client.durability.DurabilityAlertController(config);
+        autoMiner = new dev.donut.client.automine.AutoMinerController(config, this::save);
         staffDetector = new dev.donut.client.staff.StaffDetectorController(config, this::save);
         ClientTickEvents.END_CLIENT_TICK.register(auto -> {
             dev.donut.client.spectrebuilder.BuilderPlacement.tick(auto);
@@ -96,6 +98,7 @@ public final class DonutClient implements ClientModInitializer {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> fly.serverDisconnected(server, handler.player));
         AutoBuilderController autoBuilder = AutoBuilderController.get();
         ClientTickEvents.START_CLIENT_TICK.register(autoBuilder::tick);
+        ClientTickEvents.START_CLIENT_TICK.register(autoMiner::tick);
         HighlightRenderer renderer = new HighlightRenderer(config, chunkScanner, amethystScanner, lightDebug, blockEsp);
         renderer.register();
 
@@ -119,6 +122,7 @@ public final class DonutClient implements ClientModInitializer {
         KeyMapping waypointToggle = bind("toggle_waypoints", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping zoomToggle = bind("toggle_zoom", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping durability = bind("toggle_durability_alert", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping miner = bind("toggle_auto_miner", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping zoomHold = bind("zoom", GLFW.GLFW_KEY_Z, category);
         KeyMapping waypointMenu = bind("waypoints_menu", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping waypointAdd = bind("waypoint_add_here", InputConstants.UNKNOWN.getValue(), category);
@@ -128,7 +132,7 @@ public final class DonutClient implements ClientModInitializer {
         KeyMapping muteSound = bind("mute_sound", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping soundHistory = bind("sound_history", InputConstants.UNKNOWN.getValue(), category);
         ModuleKeybinds.initialize(camera, builder, chunks, bright, flight, progress, names, hotbar, amethyst, light, sounds, blocks, staff, storage,
-                coordinates, waypointToggle, zoomToggle, durability);
+                coordinates, waypointToggle, zoomToggle, durability, miner);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ProgressTimers.tick(config);
@@ -225,6 +229,9 @@ public final class DonutClient implements ClientModInitializer {
                 client.player.displayClientMessage(Component.literal(added == null ? "Waypoint limit reached"
                         : "Waypoint added: " + added.name + " (" + added.x + ", " + added.y + ", " + added.z + ")"), true);
             }
+            if (ModuleKeybinds.consumePress(client, 20) && !inputBlocked && client.screen == null && client.player != null) {
+                config.autoMiner.enabled = !config.autoMiner.enabled; save();
+            }
             zoom.tick(client);
             durabilityAlert.tick(client);
         });
@@ -268,17 +275,20 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.gui.WaypointLabels.render(graphics, config));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "durability_alert"), (graphics, delta) ->
                 dev.donut.client.gui.DurabilityAlertHud.render(graphics, config, durabilityAlert));
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "auto_miner"), (graphics, delta) ->
+                dev.donut.client.gui.AutoMinerHud.render(graphics, config, autoMiner));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "storage_esp"), (graphics, delta) ->
                 dev.donut.client.gui.StorageEspHud.render(graphics, config, storageEsp));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "staff_detector"), (graphics, delta) ->
                 dev.donut.client.gui.StaffDetectorHud.render(graphics, config, staffDetector));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
             fullbright.close();
             freecam.disable();
             fly.disable();
             autoBuilder.disconnect();
+            autoMiner.stop(client, null);
             save();
             lightDebug.close();
             blockEsp.close();

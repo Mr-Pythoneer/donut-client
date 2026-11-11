@@ -19,6 +19,7 @@
   "key.donut.toggle_waypoints": "Toggle Waypoints",
   "key.donut.toggle_zoom": "Toggle Zoom module",
   "key.donut.toggle_durability_alert": "Toggle Durability Alert",
+  "key.donut.toggle_auto_miner": "Toggle Auto Miner",
   "key.donut.zoom": "Zoom (hold)",
   "key.donut.waypoints_menu": "Open waypoints",
   "key.donut.waypoint_add_here": "Add waypoint here",
