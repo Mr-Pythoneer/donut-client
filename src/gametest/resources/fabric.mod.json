@@ -7,6 +7,8 @@
   "mixins": ["donut.gametest.mixins.json"],
   "entrypoints": {
     "fabric-client-gametest": [
+      "dev.donut.client.gametest.StorageEspGameTest",
+      "dev.donut.client.gametest.StorageEspGuiGameTest",
       "dev.donut.client.gametest.StaffDetectorGameTest",
       "dev.donut.client.gametest.StaffDetectorGuiGameTest",
       "dev.donut.client.gametest.BlockEspGameTest",

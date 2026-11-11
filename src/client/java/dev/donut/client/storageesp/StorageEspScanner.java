@@ -76,7 +76,7 @@ public final class StorageEspScanner {
     public int pendingChunks() { return queue.size(); }
     public int indexedChunks() { return index.size(); }
     public long scannedChunks() { return scannedChunks; }
-    private StorageEspSettings settings() { return config.storageEsp; }
+    public StorageEspSettings settings() { return config.storageEsp; }
 
     /** Applied packets are only observed, after vanilla has updated the client world. */
     public static void packetApplied(Packet<?> packet) {
