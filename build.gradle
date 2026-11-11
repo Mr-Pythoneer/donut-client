@@ -42,7 +42,18 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
     inputs.property('staffDetectorTestsOnly', providers.gradleProperty('staffDetectorTestsOnly').orElse('false'))
     inputs.property('freecamTestsOnly', providers.gradleProperty('freecamTestsOnly').orElse('false'))
     inputs.property('storageEspTestsOnly', providers.gradleProperty('storageEspTestsOnly').orElse('false'))
+    inputs.property('qolTestsOnly', providers.gradleProperty('qolTestsOnly').orElse('false'))
     doLast {
+        if (providers.gradleProperty('qolTestsOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = [
+                'dev.donut.client.gametest.QualityOfLifeGameTest',
+                'dev.donut.client.gametest.QualityOfLifeGuiGameTest',
+                'dev.donut.client.gametest.ModuleKeybindGameTest'
+            ]
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        } else
         if (providers.gradleProperty('storageEspTestsOnly').orElse('false').get() == 'true') {
             def manifest = new File(destinationDir, 'fabric.mod.json')
             def data = new groovy.json.JsonSlurper().parse(manifest)

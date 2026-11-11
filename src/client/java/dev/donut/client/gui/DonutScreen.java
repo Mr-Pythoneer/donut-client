@@ -465,8 +465,8 @@ public final class DonutScreen extends Screen {
     /** With a search query, results come from every category (and match setting names); otherwise the tab filters. */
     private boolean matches(int index) {
         if (enabledOnly && !enabled(index)) return false;
-        if (!searching() && (tab == 0 && (index == 3 || index == 6 || index >= 7 && index <= 9))
-                || (tab == 3 && index != 3 && index != 6) || (tab == 4 && (index < 7 || index > 9))) return false;
+        if (!searching() && ((tab == 0 && (index == 3 || index == 6 || index >= 7 && index <= 9))
+                || (tab == 3 && index != 3 && index != 6) || (tab == 4 && (index < 7 || index > 9)))) return false;
         if (!searching() && tab == 1 && !favorite(index)) return false;
         String words = switch (index) {
             case 2 -> "freecam free camera fly perspective spectator scroll speed smooth follow player look at target coordinates";
