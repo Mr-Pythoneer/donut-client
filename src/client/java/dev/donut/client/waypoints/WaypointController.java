@@ -9,10 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Client glue for waypoints. Reads only what the client already knows (connection address or singleplayer level name,
+ * Client glue for waypoints. Reads only what the client already knows (connection address or singleplayer save folder,
  * dimension, player position); it never sends packets, moves the player or changes the world.
  */
 public final class WaypointController {
@@ -23,6 +24,8 @@ public final class WaypointController {
     private final ClientConfig config;
     private final Runnable save;
     private ChunkFinderScanner chunkFinder;
+    private String checkedWorld;
+    private WaypointSettings checkedSettings;
 
     public WaypointController(ClientConfig config, Runnable save) {
         this.config = config;
@@ -43,16 +46,30 @@ public final class WaypointController {
         return this;
     }
 
-    /** Key of the current connection, or {@code "unknown"} with no world loaded. */
+    /**
+     * Key of the current connection, or {@code "unknown"} with no world loaded. Singleplayer worlds are keyed by their
+     * save folder; the first time a world is seen, waypoints saved under its old name key are handed over once.
+     */
     public String currentServer() {
         Minecraft client = Minecraft.getInstance();
         if (client == null) return Waypoints.serverKey(null, null);
         var server = client.getCurrentServer();
         String address = server == null ? null : server.ip;
-        String level = null;
         var integrated = client.getSingleplayerServer();
-        if (address == null && integrated != null) level = integrated.getWorldData().getLevelName();
-        return Waypoints.serverKey(address, level);
+        if (address != null || integrated == null) return Waypoints.serverKey(address, null);
+        String key = Waypoints.serverKey(null, Waypoints.worldFolder(integrated.getWorldPath(LevelResource.ROOT)));
+        claimLegacy(key, integrated.getWorldData().getLevelName());
+        return key;
+    }
+
+    /** Runs the legacy hand-over once per world key and settings object (an import replaces the settings). */
+    private void claimLegacy(String key, String levelName) {
+        var settings = settings();
+        if (key.equals(checkedWorld) && settings == checkedSettings) return;
+        checkedWorld = key;
+        checkedSettings = settings;
+        if (Waypoints.claimLegacy(settings.waypoints, key, Waypoints.legacyWorldKey(levelName), settings.claimedWorlds,
+                WaypointSettings.MAX_WAYPOINTS) > 0) save();
     }
 
     /** Dimension id such as {@code minecraft:the_nether}, or {@code null} with no world loaded. */

@@ -1,6 +1,8 @@
 package dev.donut.client.waypoints;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -28,12 +30,73 @@ public final class Waypoints {
         public double distanceSq(Vec3 from) { return center().distanceToSqr(from); }
     }
 
-    /** {@code "mp:<address>"} in multiplayer, {@code "sp:<level>"} in singleplayer, otherwise {@code "unknown"}. */
-    public static String serverKey(String multiplayerAddress, String singleplayerLevelName) {
+    /** Prefix of singleplayer keys: the world's save folder name, unique per save. */
+    public static final String WORLD_PREFIX = "spdir:";
+    /** Prefix of the old singleplayer keys built from the world's display name, which two worlds can share. */
+    public static final String LEGACY_WORLD_PREFIX = "sp:";
+
+    /**
+     * {@code "mp:<address>"} in multiplayer, {@code "spdir:<save folder>"} in singleplayer, otherwise {@code "unknown"}.
+     * The folder (not the display name) identifies a singleplayer world, so two worlds called "New World" stay apart.
+     */
+    public static String serverKey(String multiplayerAddress, String singleplayerFolder) {
         if (multiplayerAddress != null && !multiplayerAddress.isBlank())
             return "mp:" + multiplayerAddress.strip().toLowerCase(Locale.ROOT);
-        if (singleplayerLevelName != null && !singleplayerLevelName.isBlank()) return "sp:" + singleplayerLevelName.strip();
+        if (singleplayerFolder != null && !singleplayerFolder.isBlank()) return WORLD_PREFIX + singleplayerFolder.strip();
         return "unknown";
+    }
+
+    /** The old key for a singleplayer world, {@code "sp:<level name>"}, or {@code null} for a blank name. */
+    public static String legacyWorldKey(String levelName) {
+        return levelName == null || levelName.isBlank() ? null : LEGACY_WORLD_PREFIX + levelName.strip();
+    }
+
+    /** The save folder name from a world root path such as {@code saves/My World/.}, or {@code null}. */
+    public static String worldFolder(Path worldRoot) {
+        if (worldRoot == null) return null;
+        Path name = worldRoot.toAbsolutePath().normalize().getFileName();
+        return name == null || name.toString().isBlank() ? null : name.toString();
+    }
+
+    /**
+     * One-time hand-over of waypoints saved under the old name key ({@code legacyKey}) to a world's folder key.
+     * Nothing happens when {@code worldKey} was handed over before (listed in {@code claimed}), already has waypoints,
+     * or there are no legacy waypoints. Otherwise the legacy waypoints are copied to {@code worldKey} and the legacy
+     * entries are kept, because several worlds with the same name may have shared that list and each should get its
+     * own copy when it is first opened. If the copies would take the list past {@code max}, the legacy entries are
+     * re-keyed instead (moved), so nothing is lost. {@code worldKey} is then added to {@code claimed}, so deleting the
+     * copies later never brings them back.
+     *
+     * @return how many waypoints {@code worldKey} received
+     */
+    public static int claimLegacy(List<Waypoint> all, String worldKey, String legacyKey, Collection<String> claimed, int max) {
+        if (all == null || claimed == null || worldKey == null || !worldKey.startsWith(WORLD_PREFIX) || legacyKey == null
+                || legacyKey.equals(worldKey) || claimed.contains(worldKey)) return 0;
+        List<Waypoint> legacy = new ArrayList<>();
+        for (Waypoint waypoint : all) {
+            if (waypoint == null) continue;
+            if (worldKey.equals(waypoint.server)) return 0;
+            if (legacyKey.equals(waypoint.server)) legacy.add(waypoint);
+        }
+        if (legacy.isEmpty()) return 0;
+        long present = all.stream().filter(Objects::nonNull).count();
+        if (present + legacy.size() <= max) {
+            for (Waypoint waypoint : legacy) all.add(copy(waypoint, worldKey));
+        } else {
+            for (Waypoint waypoint : legacy) waypoint.server = worldKey;
+        }
+        claimed.add(worldKey);
+        return legacy.size();
+    }
+
+    /** A copy of {@code waypoint} saved under {@code server}. */
+    public static Waypoint copy(Waypoint waypoint, String server) {
+        Waypoint copy = new Waypoint(waypoint.name, waypoint.x, waypoint.y, waypoint.z, waypoint.dimension, server);
+        copy.color = waypoint.color;
+        copy.visible = waypoint.visible;
+        copy.created = waypoint.created;
+        copy.sanitize();
+        return copy;
     }
 
     /** The Overworld and the Nether are linked by portals; every other dimension has no partner. */

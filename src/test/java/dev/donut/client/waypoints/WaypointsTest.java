@@ -2,6 +2,7 @@ package dev.donut.client.waypoints;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.world.phys.Vec3;
@@ -17,10 +18,87 @@ class WaypointsTest {
     @Test void serverKeysPreferTheMultiplayerAddress() {
         assertEquals("mp:donutsmp.net", Waypoints.serverKey("  DonutSMP.net ", "My World"));
         assertEquals("mp:play.example.com:25566", Waypoints.serverKey("Play.Example.com:25566", null));
-        assertEquals("sp:My World", Waypoints.serverKey("", " My World "));
-        assertEquals("sp:My World", Waypoints.serverKey(null, "My World"));
+        assertEquals("spdir:My World (1)", Waypoints.serverKey("", " My World (1) "));
+        assertEquals("spdir:My World", Waypoints.serverKey(null, "My World"));
         assertEquals("unknown", Waypoints.serverKey(" ", " "));
         assertEquals("unknown", Waypoints.serverKey(null, null));
+    }
+
+    @Test void singleplayerKeysUseTheSaveFolder() {
+        assertEquals("My World (1)", Waypoints.worldFolder(Path.of("saves", "My World (1)", ".")));
+        assertEquals("New World", Waypoints.worldFolder(Path.of("/games/saves/New World")));
+        assertNull(Waypoints.worldFolder(null));
+        assertNull(Waypoints.worldFolder(Path.of("/")));
+        // Two saves with the same display name get different keys.
+        assertNotEquals(Waypoints.serverKey(null, "New World"), Waypoints.serverKey(null, "New World (1)"));
+        assertEquals("sp:New World", Waypoints.legacyWorldKey(" New World "));
+        assertNull(Waypoints.legacyWorldKey(" "));
+        // A folder named like an old key cannot collide with it.
+        assertNotEquals(Waypoints.legacyWorldKey("Base"), Waypoints.serverKey(null, "Base"));
+    }
+
+    @Test void legacyWaypointsAreCopiedOncePerWorldAndKept() {
+        String legacy = Waypoints.legacyWorldKey("New World"), first = Waypoints.serverKey(null, "New World"),
+                second = Waypoints.serverKey(null, "New World (1)");
+        var base = at("Base", 1, 64, 2, Waypoints.OVERWORLD, legacy);
+        base.color = 0xFA7921;
+        base.visible = false;
+        base.created = 42;
+        List<Waypoint> all = new ArrayList<>(List.of(base, at("Farm", 5, 70, 5, Waypoints.NETHER, legacy), at("Elsewhere", 0, 0, 0, Waypoints.OVERWORLD, MP)));
+        List<String> claimed = new ArrayList<>();
+
+        assertEquals(2, Waypoints.claimLegacy(all, first, legacy, claimed, 500));
+        assertEquals(5, all.size());
+        assertEquals(List.of(first), claimed);
+        var copied = Waypoints.listOrder(all, first, Waypoints.OVERWORLD, null);
+        assertEquals(2, copied.size());
+        var copy = copied.stream().filter(w -> w.name.equals("Base")).findFirst().orElseThrow();
+        assertNotSame(base, copy);
+        assertEquals(0xFA7921, copy.color);
+        assertFalse(copy.visible);
+        assertEquals(42, copy.created);
+        assertEquals(base.pos(), copy.pos());
+        assertEquals(legacy, base.server, "The legacy entry is kept for other worlds with the same name");
+
+        // A second world with the same name gets its own copy; the two lists are independent.
+        assertEquals(2, Waypoints.claimLegacy(all, second, legacy, claimed, 500));
+        assertEquals(2, Waypoints.listOrder(all, second, null, null).size());
+        assertEquals(7, all.size());
+
+        // Once per world: deleting the copies does not bring them back.
+        all.removeIf(w -> first.equals(w.server));
+        assertEquals(0, Waypoints.claimLegacy(all, first, legacy, claimed, 500));
+        assertTrue(Waypoints.listOrder(all, first, null, null).isEmpty());
+    }
+
+    @Test void legacyClaimSkipsWorldsThatAlreadyHaveWaypoints() {
+        String legacy = Waypoints.legacyWorldKey("Survival"), world = Waypoints.serverKey(null, "Survival");
+        List<Waypoint> all = new ArrayList<>(List.of(at("Old", 1, 1, 1, Waypoints.OVERWORLD, legacy), at("New", 2, 2, 2, Waypoints.OVERWORLD, world)));
+        List<String> claimed = new ArrayList<>();
+        assertEquals(0, Waypoints.claimLegacy(all, world, legacy, claimed, 500));
+        assertEquals(2, all.size());
+        assertTrue(claimed.isEmpty());
+        // Nothing to hand over, multiplayer keys, or missing inputs: no change.
+        List<Waypoint> none = new ArrayList<>();
+        assertEquals(0, Waypoints.claimLegacy(none, Waypoints.serverKey(null, "Fresh"), Waypoints.legacyWorldKey("Fresh"), claimed, 500));
+        assertTrue(claimed.isEmpty());
+        assertEquals(0, Waypoints.claimLegacy(all, MP, legacy, claimed, 500));
+        assertEquals(0, Waypoints.claimLegacy(all, world, null, claimed, 500));
+        assertEquals(0, Waypoints.claimLegacy(null, world, legacy, claimed, 500));
+        assertEquals(0, Waypoints.claimLegacy(all, world, legacy, null, 500));
+    }
+
+    @Test void legacyWaypointsMoveWhenCopiesWouldNotFit() {
+        String legacy = Waypoints.legacyWorldKey("Big"), world = Waypoints.serverKey(null, "Big");
+        List<Waypoint> all = new ArrayList<>();
+        for (int i = 0; i < 3; i++) all.add(at("P" + i, i, 64, 0, Waypoints.OVERWORLD, legacy));
+        all.add(at("Other", 0, 64, 0, Waypoints.OVERWORLD, MP));
+        List<String> claimed = new ArrayList<>();
+        assertEquals(3, Waypoints.claimLegacy(all, world, legacy, claimed, 6));
+        assertEquals(4, all.size(), "Moved, not copied");
+        assertEquals(3, Waypoints.listOrder(all, world, null, null).size());
+        assertTrue(Waypoints.listOrder(all, legacy, null, null).isEmpty());
+        assertEquals(List.of(world), claimed);
     }
 
     @Test void onlyTheOverworldAndNetherAreLinked() {

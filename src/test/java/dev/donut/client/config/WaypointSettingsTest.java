@@ -29,6 +29,25 @@ class WaypointSettingsTest {
         }
     }
 
+    @Test void claimedWorldsAreCleanedAndCapped() {
+        var value = new WaypointSettings();
+        assertTrue(value.claimedWorlds.isEmpty());
+        value.claimedWorlds = new ArrayList<>(Arrays.asList(" spdir:A ", null, "", "spdir:A", "spdir:B"));
+        value.sanitize();
+        assertEquals(java.util.List.of("spdir:A", "spdir:B"), value.claimedWorlds);
+        value.claimedWorlds = new ArrayList<>();
+        for (int i = 0; i < WaypointSettings.MAX_CLAIMED_WORLDS + 5; i++) value.claimedWorlds.add("spdir:" + i);
+        value.sanitize();
+        assertEquals(WaypointSettings.MAX_CLAIMED_WORLDS, value.claimedWorlds.size());
+        assertEquals("spdir:" + (WaypointSettings.MAX_CLAIMED_WORLDS + 4), value.claimedWorlds.getLast(), "The newest entries are kept");
+        var loaded = GSON.fromJson("{\"claimedWorlds\":null}", WaypointSettings.class);
+        loaded.sanitize();
+        assertNotNull(loaded.claimedWorlds);
+        var round = GSON.fromJson(GSON.toJson(value), WaypointSettings.class);
+        round.sanitize();
+        assertEquals(value.claimedWorlds, round.claimedWorlds);
+    }
+
     @Test void waypointsSurviveJson() {
         var value = new WaypointSettings();
         value.enabled = value.favorite = true;

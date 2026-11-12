@@ -31,8 +31,9 @@ Save named places and see them through walls as an outlined block, a vertical be
 
 **Storage:**
 
-- Waypoints are stored per server (multiplayer address) or per singleplayer world (level name) and per dimension. They are saved only in your local Donut config, and the limit is 500 in total.
-- Two singleplayer worlds with the same name share a list.
+- Waypoints are stored per server (multiplayer address) or per singleplayer world and per dimension. They are saved only in your local Donut config, and the limit is 500 in total.
+- A singleplayer world is identified by its save folder (`saves/<folder>`), not its display name, so two worlds both called "New World" keep separate lists. Renaming a world in the world list keeps its waypoints; copying or renaming its folder starts an empty list.
+- Upgrading from an older version: waypoints were previously stored under the world's display name. The first time you open a world, waypoints saved under its name are copied to that world. The old entries are kept, hidden, so another world with the same name gets its own copy when you open it. This happens once per world, so deleting the copied waypoints doesn't bring them back. If the copies wouldn't fit in the 500-waypoint limit, the old entries are moved instead, and only the first world you open gets them.
 
 **Display:**
 

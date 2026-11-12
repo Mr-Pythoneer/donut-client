@@ -1,9 +1,11 @@
 package dev.donut.client.gametest;
 
 import dev.donut.client.DonutClient;
+import dev.donut.client.config.WaypointSettings;
 import dev.donut.client.durability.DurabilityAlertController;
 import dev.donut.client.gui.CoordinatesHud;
 import dev.donut.client.input.ModuleKeybinds;
+import dev.donut.client.waypoints.Waypoint;
 import dev.donut.client.waypoints.WaypointController;
 import dev.donut.client.waypoints.Waypoints;
 import dev.donut.client.zoom.ZoomController;
@@ -18,6 +20,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
 
 /** Coordinates HUD, hold-to-zoom, durability warnings and waypoints, all through the production instances. */
@@ -28,6 +31,7 @@ public final class QualityOfLifeGameTest implements FabricClientGameTest {
         boolean coordinates = config.coordinates.enabled, zoom = config.zoom.enabled, durability = config.durabilityAlert.enabled,
                 waypoints = config.waypoints.enabled, showHud = config.showHud;
         var savedWaypoints = new ArrayList<>(config.waypoints.waypoints);
+        var originalWaypoints = config.waypoints;
         double zoomFactor = config.zoom.factor;
         context.getInput().resizeWindow(1280, 800);
         context.runOnClient(mc -> {
@@ -127,9 +131,23 @@ public final class QualityOfLifeGameTest implements FabricClientGameTest {
             context.waitTicks(60);
             Path plain = screenshot(context, "qol-05-before-waypoint");
             context.runOnClient(mc -> {
+                // Fresh settings (as after a profile import) holding one hidden waypoint under the old level-name key.
+                var fresh = new WaypointSettings();
+                String level = mc.getSingleplayerServer().getWorldData().getLevelName();
+                String folder = Waypoints.worldFolder(mc.getSingleplayerServer().getWorldPath(LevelResource.ROOT));
+                var old = new Waypoint("Old Base", -44, 70, 98, Waypoints.OVERWORLD, Waypoints.legacyWorldKey(level));
+                old.visible = false;
+                fresh.waypoints.add(old);
+                config.waypoints = fresh;
+                String key = points.currentServer();
+                require(key.equals(Waypoints.WORLD_PREFIX + folder), "Singleplayer key is not the save folder: " + key + " (folder " + folder + ")");
+                var claimed = points.forCurrentServer();
+                require(claimed.size() == 1 && claimed.getFirst().name.equals("Old Base") && claimed.getFirst() != old,
+                        "Waypoints under the old name key were not copied to the folder key: " + claimed);
+                require(old.server.equals(Waypoints.legacyWorldKey(level)) && fresh.claimedWorlds.contains(key), "Legacy entry or claim marker wrong");
                 config.waypoints.enabled = true;
                 var added = points.add("Test Base", new BlockPos(-44, 64, 100));
-                require(added != null && added.server.startsWith("sp:"), "Singleplayer waypoint key missing: " + (added == null ? null : added.server));
+                require(added != null && added.server.equals(key), "Singleplayer waypoint key missing: " + (added == null ? null : added.server));
                 require(points.add("Test Base", new BlockPos(-44, 66, 103)).name.equals("Test Base 2"), "Duplicate names were not numbered");
                 require(points.shown().size() == 2, "Waypoints are not shown in their own dimension");
             });
@@ -157,6 +175,7 @@ public final class QualityOfLifeGameTest implements FabricClientGameTest {
         } finally {
             context.getInput().releaseKey(ModuleKeybinds.zoomKey());
             context.runOnClient(mc -> {
+                config.waypoints = originalWaypoints;
                 config.coordinates.enabled = coordinates;
                 config.zoom.enabled = zoom;
                 config.zoom.factor = zoomFactor;
