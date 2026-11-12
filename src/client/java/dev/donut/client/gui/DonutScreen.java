@@ -1148,11 +1148,18 @@ public final class DonutScreen extends Screen {
         section(g, "Ores", 0);
         for (var kind : dev.donut.client.automine.OreKind.values())
             settingToggle(g, "ore" + kind.id, kind.label, 0, () -> value.oreEnabled(kind), () -> value.ores.put(kind.id, !value.oreEnabled(kind)));
+        settingToggle(g, "minerStone", "Stone variants", 0, () -> value.stoneVariants, () -> value.stoneVariants = !value.stoneVariants);
+        settingToggle(g, "minerDeepslate", "Deepslate variants", 0, () -> value.deepslateVariants, () -> value.deepslateVariants = !value.deepslateVariants);
         settingToggle(g, "minerBuried", "Include buried ores", 0, () -> value.includeBuried, () -> value.includeBuried = !value.includeBuried);
         help(g, "Off: only ores with a face open to air, the ones you could see. On: it also digs a 1\u00D72 tunnel to buried ores.");
+        section(g, "Tools", 0);
+        settingToggle(g, "minerSilkDeepslate", "Silk Touch for deepslate ores", 0, () -> value.silkDeepslate, () -> value.silkDeepslate = !value.silkDeepslate);
+        settingToggle(g, "minerSilkStone", "Silk Touch for stone ores", 0, () -> value.silkStone, () -> value.silkStone = !value.silkStone);
+        help(g, "Uses a Silk Touch pickaxe from your hotbar when there is one, so the ore block itself drops. Otherwise it uses your best other pickaxe.");
         section(g, "Search", 0);
         slider(g, "minerRange", "Range", 0, () -> value.range, next -> value.range = (int) next, 8, 64, 1, " blocks");
         slider(g, "minerTunnel", "Tunnel limit", 0, () -> value.tunnelLimit, next -> value.tunnelLimit = (int) next, 4, 128, 1, " blocks");
+        settingToggle(g, "minerCollect", "Pick up drops", 0, () -> value.collectDrops, () -> value.collectDrops = !value.collectDrops);
         section(g, "Safety", 0);
         slider(g, "minerHealth", "Pause at health", 0, () -> value.minHealth, next -> value.minHealth = (int) next, 1, 19, 1, " HP");
         settingToggle(g, "minerProtect", "Protect low-durability tools", 0, () -> value.protectTools, () -> value.protectTools = !value.protectTools);

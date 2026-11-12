@@ -42,9 +42,27 @@ public final class BuilderNavigator {
         steering.forward = false; steering.jump = false; steering.sneak = sneak; steering.tick();
     }
 
+    private BuilderPathfinder.Terrain terrain;
+    private boolean walkingForward;
+
+    /** True when the player can walk from {@code from} straight to the cell's centre on level, standable ground. */
+    private boolean straight(Vec3 from, BuilderPathfinder.Cell to) {
+        if (terrain == null) return false;
+        double dx = to.x() + .5 - from.x, dz = to.z() + .5 - from.z, length = Math.sqrt(dx * dx + dz * dz);
+        if (length < 1e-3) return true;
+        double nx = -dz / length, nz = dx / length;
+        for (double t = 0; t <= length; t += .25) {
+            for (double side : new double[] {-.3, 0, .3}) {
+                double x = from.x + dx * t / length + nx * side, z = from.z + dz * t / length + nz * side;
+                if (!terrain.standable(new BuilderPathfinder.Cell((int) Math.floor(x), to.y(), (int) Math.floor(z)))) return false;
+            }
+        }
+        return true;
+    }
+
     public void release() {
         if (owner != null && owner.input == steering && saved != null) owner.input = saved;
-        owner = null; saved = null; steering.forward = false; steering.jump = false; steering.sneak = false;
+        owner = null; saved = null; steering.forward = false; steering.jump = false; steering.sneak = false; walkingForward = false;
         route = List.of(); index = 0; stalled = 0; lastPosition = null;
     }
     public void replan() { route = List.of(); index = 0; stalled = 0; lastPosition = null; }
@@ -67,6 +85,12 @@ public final class BuilderNavigator {
         return walk(client, destination, at -> stand.test(pos(at)) && goal(client, at, destination));
     }
 
+    /** Walks toward {@code destination} until the feet are in any cell {@code stand} accepts (no reach/placement rule). */
+    public Result walkTo(Minecraft client, BlockPos destination, Predicate<BlockPos> stand) {
+        if (client.player == null) return Result.NO_PATH;
+        return walk(client, destination, at -> stand.test(pos(at)));
+    }
+
     /** Walks until the feet are in exactly this cell. */
     public Result stepTo(Minecraft client, BlockPos feet) {
         BuilderPathfinder.Cell cell = cell(feet);
@@ -85,7 +109,7 @@ public final class BuilderNavigator {
         BuilderPathfinder.Cell feet = cell(client.player.blockPosition());
         if (accept.test(feet)) return Result.ARRIVED;
         if (route.isEmpty() || index >= route.size()) {
-            BuilderPathfinder.Terrain terrain = new BuilderPathfinder.Terrain() {
+            terrain = new BuilderPathfinder.Terrain() {
                 @Override public boolean standable(BuilderPathfinder.Cell at) {
                     BlockPos pos = pos(at);
                     if (!MaterialTracker.isLoaded(client.level,pos) || !MaterialTracker.isLoaded(client.level,pos.above(2))) return false;
@@ -112,7 +136,20 @@ public final class BuilderNavigator {
         }
         BuilderPathfinder.Cell next = route.get(index);
         Vec3 aim = new Vec3(next.x()+.5, next.y(), next.z()+.5);
-        if (client.player.position().distanceToSqr(aim) < .16) {
+        if (Float.isFinite(turnLimit)) {
+            // Natural walking (Auto Miner): count cells as passed once the feet are in them, and steer toward the
+            // farthest of the next few cells reachable in a straight line, so the path is followed without
+            // zig-zagging through every cell centre or stopping at each one.
+            BuilderPathfinder.Cell here = cell(client.player.blockPosition());
+            for (int i = index; i < Math.min(route.size(), index + 5); i++) if (route.get(i).equals(here)) { index = i + 1; break; }
+            if (index >= route.size()) { replan(); return Result.MOVING; }
+            next = route.get(index);
+            int ahead = index;
+            while (ahead + 1 < route.size() && ahead - index < 4 && route.get(ahead + 1).y() == next.y()
+                    && next.y() == here.y() && straight(client.player.position(), route.get(ahead + 1))) ahead++;
+            BuilderPathfinder.Cell look = route.get(ahead);
+            aim = new Vec3(look.x()+.5, look.y(), look.z()+.5);
+        } else if (client.player.position().distanceToSqr(aim) < .16) {
             index++;
             if (index >= route.size()) { replan(); return Result.MOVING; }
             next = route.get(index); aim = new Vec3(next.x()+.5, next.y(), next.z()+.5);
@@ -120,11 +157,13 @@ public final class BuilderNavigator {
         Vec3 delta = aim.subtract(client.player.position());
         float yaw = (float)Math.toDegrees(Math.atan2(-delta.x, delta.z));
         if (Float.isFinite(turnLimit)) {
-            // Turn like a person: capped per tick, and turn in place before walking off in the wrong direction.
-            float error = net.minecraft.util.Mth.wrapDegrees(yaw - client.player.getYRot());
-            client.player.setYRot(net.minecraft.util.Mth.approachDegrees(client.player.getYRot(), yaw, turnLimit));
-            client.player.setXRot(net.minecraft.util.Mth.approach(client.player.getXRot(), 10, turnLimit));
-            steering.forward = Math.abs(error) <= 60;
+            // Turn like a person: eased every frame, capped in speed; walk only while roughly facing the way, with
+            // hysteresis so small corrections never stop and restart the walk.
+            float error = Math.abs(net.minecraft.util.Mth.wrapDegrees(yaw - client.player.getYRot()));
+            dev.donut.client.automine.SmoothLook.aim(client, yaw, 8, turnLimit);
+            if (error <= 35) walkingForward = true;
+            else if (error > 75) walkingForward = false;
+            steering.forward = walkingForward;
         } else {
             client.player.setYRot(yaw);
             client.player.setXRot(10);

@@ -21,8 +21,17 @@ Auto Miner is client-side and vanilla-only:
 ## How it works
 
 1. **Search.** It sweeps the loaded chunks within **Range** of you, a few chunks per tick (at most 4 chunks or 1.5 ms per tick), and picks the nearest ore that qualifies.
-2. **Walk.** It walks to a spot where the ore is within reach and in plain view. It never stands on top of the ore it is about to mine.
-3. **Mine.** It selects the fastest hotbar tool that can actually harvest the ore, turns toward it and breaks it. When it is done it searches again.
+2. **Walk.** It walks to a spot where the ore is within reach and in plain view. It never stands on top of the ore it is about to mine. It follows the path in straight lines (looking a few blocks ahead instead of steering through every block centre) and keeps walking through small corrections.
+3. **Mine.** It selects the fastest hotbar tool that can actually harvest the ore (or a Silk Touch one, see below), turns toward it and breaks it.
+4. **Pick up.** With **Pick up drops** on, it walks over the items that ore dropped (stepping into the hole if needed) for up to five seconds, then searches again. Items that were already lying around are left alone, and unreachable drops are skipped.
+
+**Turning.** The view turns a little on every rendered frame, easing out as it lines up, never faster than **Turn speed**. Turning only on game ticks (20 times a second) looks like stuttering at high frame rates, because Minecraft doesn't smooth your own view between ticks. It is still your real view, exactly as a mouse would move it.
+
+### Stone and deepslate forms
+
+**Stone variants** and **Deepslate variants** choose which form of each selected ore to mine (Nether ores count as the normal form). Turn off stone variants to mine only deepslate emerald, deepslate diamond and so on.
+
+**Silk Touch for deepslate ores** (on by default) and **Silk Touch for stone ores** (off) make it use a Silk Touch pickaxe from your hotbar for that form, so the ore block itself drops. Without one it falls back to your best other pickaxe. When Silk Touch isn't wanted it prefers a pickaxe without it. It only uses tools in the hotbar.
 
 A target is skipped, and remembered as skipped for one minute, when it can't be reached, it is next to lava or water, there is no suitable tool, or a tunnel to it would be unsafe. The HUD shows the last skipped ore and why.
 
@@ -62,6 +71,9 @@ Areas at the edge of loaded chunks count as unsafe.
 | Setting | Default | Range |
 | --- | --- | --- |
 | Ores to mine | Diamond, iron, gold, emerald, ancient debris | Coal, copper, iron, gold, redstone, lapis, diamond, emerald, nether quartz, nether gold, ancient debris. Deepslate variants count as the same ore. |
+| Stone variants / Deepslate variants | On / On | Which form of each ore to mine |
+| Silk Touch for deepslate ores / stone ores | On / Off | Uses a Silk Touch pickaxe from the hotbar when there is one |
+| Pick up drops | On | Up to 5 seconds per ore |
 | Include buried ores | Off | |
 | Range | 24 blocks | 8–64 |
 | Pause at health | 6 HP (3 hearts) | 1–19 |
@@ -79,5 +91,5 @@ A small panel in the top-left stack, in the same style as Donut's other panels: 
 
 - It can only see what the server sent. Anti-xray servers may hide or fake ores.
 - The mined count goes up when your client sees the block break. If the server then refuses the break (for example in a protected area), the count can be one too high.
-- Tool choice compares the tools' base mining speed; Efficiency enchantments are not taken into account.
+- Tool choice compares the tools' base mining speed; Efficiency and Fortune are not taken into account. Silk Touch is the only enchantment it looks at.
 - It does not light caves, fight mobs, or eat. Low health pauses it, but staying alive is still up to you.

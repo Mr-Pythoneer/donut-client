@@ -32,6 +32,14 @@ public final class AutoMinerSettings {
     /** Largest yaw/pitch change per tick, in degrees, so turning looks like a person. */
     public double turnSpeed = DEFAULT_TURN;
     public boolean showHud = true;
+    /** Ore forms to mine: the normal (stone, or Nether) form and the deepslate form. */
+    public boolean stoneVariants = true;
+    public boolean deepslateVariants = true;
+    /** Use a Silk Touch tool from the hotbar when there is one, so the ore block itself drops. */
+    public boolean silkDeepslate = true;
+    public boolean silkStone = false;
+    /** After each ore, walk over its drops for up to five seconds. */
+    public boolean collectDrops = true;
 
     public static Map<String, Boolean> defaultOres() {
         Map<String, Boolean> ores = new LinkedHashMap<>();
@@ -43,6 +51,17 @@ public final class AutoMinerSettings {
         if (kind == null) return false;
         Boolean value = ores == null ? null : ores.get(kind.id);
         return value == null ? kind.defaultEnabled : value;
+    }
+
+    /** A selected ore in a selected form. */
+    public boolean wants(net.minecraft.world.level.block.state.BlockState state) {
+        OreKind kind = OreKind.of(state);
+        if (kind == null || !oreEnabled(kind)) return false;
+        return OreKind.deepslate(state) ? deepslateVariants : stoneVariants;
+    }
+
+    public boolean wantsSilk(net.minecraft.world.level.block.state.BlockState state) {
+        return OreKind.deepslate(state) ? silkDeepslate : silkStone;
     }
 
     public void sanitize() {

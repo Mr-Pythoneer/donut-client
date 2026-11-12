@@ -24,7 +24,9 @@ public final class MinerRules {
     public interface View { BlockState state(BlockPos pos); }
 
     /** One hotbar slot. {@code usesLeft} is -1 for items without durability (including an empty hand). */
-    public record Tool(int slot, float speed, boolean harvests, int usesLeft) { }
+    public record Tool(int slot, float speed, boolean harvests, int usesLeft, boolean silk) {
+        public Tool(int slot, float speed, boolean harvests, int usesLeft) { this(slot, speed, harvests, usesLeft, false); }
+    }
 
     /** The next 1x2 tunnel cell to stand in, and the blocks to clear first, in breaking order. */
     public record Step(BlockPos feet, List<BlockPos> clear) { }
@@ -101,14 +103,37 @@ public final class MinerRules {
      * right tool are skipped, as are protected tools at or below {@code reserve} uses. Ties keep the held slot.
      */
     public static int chooseTool(List<Tool> hotbar, int selected, boolean needsHarvest, boolean protect, int reserve) {
-        Tool best = null;
+        return chooseTool(hotbar, selected, needsHarvest, protect, reserve, null);
+    }
+
+    /**
+     * As above, with a Silk Touch preference: {@code TRUE} uses a usable Silk Touch tool when there is one (falling
+     * back to any other), {@code FALSE} avoids Silk Touch when another usable tool exists, {@code null} doesn't care.
+     */
+    public static int chooseTool(List<Tool> hotbar, int selected, boolean needsHarvest, boolean protect, int reserve, Boolean silk) {
+        List<Tool> usable = new java.util.ArrayList<>();
         for (Tool tool : hotbar) {
             if (protect && tool.usesLeft() >= 0 && tool.usesLeft() <= reserve) continue;
             if (needsHarvest && !tool.harvests()) continue;
+            usable.add(tool);
+        }
+        if (silk != null && usable.stream().anyMatch(tool -> tool.silk() == silk)) usable.removeIf(tool -> tool.silk() != silk);
+        Tool best = null;
+        for (Tool tool : usable) {
             if (best == null || tool.speed() > best.speed()
                     || tool.speed() == best.speed() && tool.slot() == selected && best.slot() != selected) best = tool;
         }
         return best == null ? -1 : best.slot();
+    }
+
+    /**
+     * Whether a player standing in {@code feet} would pick up an item with this box. Vanilla collects items touching
+     * the player's box grown by 1 sideways and 0.5 up and down; this assumes the player may be up to 0.3 off the cell
+     * centre and keeps a small margin.
+     */
+    public static boolean reachesItem(BlockPos feet, net.minecraft.world.phys.AABB item) {
+        double cx = feet.getX() + .5, cz = feet.getZ() + .5;
+        return new net.minecraft.world.phys.AABB(cx - 1.0, feet.getY() - .45, cz - 1.0, cx + 1.0, feet.getY() + 2.2, cz + 1.0).intersects(item);
     }
 
     /** Moves yaw and pitch toward the target by at most {@code maxStep} degrees each. */

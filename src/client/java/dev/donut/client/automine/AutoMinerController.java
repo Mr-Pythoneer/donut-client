@@ -35,7 +35,7 @@ import net.minecraft.world.phys.Vec3;
  * All access is on the client thread.
  */
 public final class AutoMinerController {
-    public enum State { OFF, SEARCHING, WALKING, MINING, TUNNELING, PAUSED }
+    public enum State { OFF, SEARCHING, WALKING, MINING, TUNNELING, COLLECTING, PAUSED }
 
     /** How long a skipped target is ignored. */
     public static final int REJECT_TICKS = 1200;
@@ -44,6 +44,8 @@ public final class AutoMinerController {
     public static final int BREAK_TIMEOUT_TICKS = 600;
     public static final int STOP_NOTICE_TICKS = 100;
     private static final int RESCAN_DELAY_TICKS = 40;
+    /** Longest time spent walking to drops after a break, and how long to wait for them to appear. */
+    public static final int COLLECT_TICKS = 100, DROP_WAIT_TICKS = 15;
     private static AutoMinerController instance;
 
     private final ClientConfig config;
@@ -72,6 +74,9 @@ public final class AutoMinerController {
     /** The last block handed to the game mode's destroy calls. */
     private BlockPos lastPressed;
     private int rescanDelay;
+    private BlockPos collectOrigin;
+    private long collectStart;
+    private final java.util.Set<Integer> knownItems = new java.util.HashSet<>(), skippedItems = new java.util.HashSet<>();
     private String lastSkip;
     private String lastStop;
     private long lastStopTick = Long.MIN_VALUE;
@@ -130,13 +135,14 @@ public final class AutoMinerController {
 
         String pause = pauseReason(client);
         if (pause != null) { pause(client, pause); return; }
-        if (state == State.PAUSED) state = target != null ? State.WALKING : State.SEARCHING;
+        if (state == State.PAUSED) state = collectOrigin != null ? State.COLLECTING : target != null ? State.WALKING : State.SEARCHING;
 
         switch (state) {
             case SEARCHING -> search(client);
             case WALKING -> walk(client);
             case MINING -> mine(client);
             case TUNNELING -> tunnel(client);
+            case COLLECTING -> collect(client);
             default -> { }
         }
     }
@@ -152,6 +158,8 @@ public final class AutoMinerController {
 
     private void stop(Minecraft client, String reason, boolean live) {
         navigator.reset();
+        SmoothLook.release();
+        collectOrigin = null;
         if (live && client.gameMode != null && client.gameMode.isDestroying()) client.gameMode.stopDestroyBlock();
         if (live && client.player != null && originalSlot >= 0) client.player.getInventory().setSelectedSlot(originalSlot);
         for (KeyMapping key : List.of(client.options.keyAttack, client.options.keyUse)) key.setDown(false);
@@ -210,6 +218,7 @@ public final class AutoMinerController {
         if (state != State.PAUSED || !reason.equals(pauseReason)) {
             // Hand the player back completely: real input, no block being broken.
             navigator.release();
+            SmoothLook.release();
             abortBreak(client);
             step = null;
         }
@@ -255,13 +264,12 @@ public final class AutoMinerController {
         ClientLevel level = client.level;
         if (!MaterialTracker.isLoaded(level, pos)) return "";
         BlockState state = level.getBlockState(pos);
-        OreKind kind = OreKind.of(state);
-        if (kind == null || !settings.oreEnabled(kind)) return "";
+        if (!settings.wants(state)) return "";
         if (Vec3.atCenterOf(pos).distanceToSqr(eye) > (double) settings.range * settings.range) return "";
         MinerRules.View view = view(level);
         if (!settings.includeBuried && !MinerRules.exposed(view, pos)) return "";
         if (MinerRules.nearFluid(view, pos)) return "next to lava or water";
-        if (toolSlot(client, state) < 0) return "no suitable tool";
+        if (toolSlot(client, state, pos) < 0) return "no suitable tool";
         return null;
     }
 
@@ -291,7 +299,7 @@ public final class AutoMinerController {
         if (!stillTarget(client)) return;
         if (MinerRules.standsOn(client.player.blockPosition(), target)) { rejectTarget("it is under your feet"); return; }
         switch (breakBlock(client, target)) {
-            case DONE -> { mined++; clearTarget(); state = State.SEARCHING; }
+            case DONE -> { mined++; BlockPos ore = target; clearTarget(); beginCollect(client, ore); }
             case NO_TOOL -> rejectTarget("no suitable tool");
             case BLOCKED -> {
                 if (config.autoMiner.includeBuried) {
@@ -328,7 +336,7 @@ public final class AutoMinerController {
             switch (breakBlock(client, pos)) {
                 case DONE -> {
                     tunnelDug++;
-                    if (pos.equals(target)) { mined++; clearTarget(); this.state = State.SEARCHING; }
+                    if (pos.equals(target)) { mined++; clearTarget(); beginCollect(client, pos); }
                 }
                 case NO_TOOL -> rejectTarget("no tool for the tunnel");
                 case BLOCKED -> rejectTarget("tunnel blocked");
@@ -346,8 +354,7 @@ public final class AutoMinerController {
     /** False (and back to searching) when the target is gone or no longer valid. */
     private boolean stillTarget(Minecraft client) {
         if (target == null) { state = State.SEARCHING; return false; }
-        OreKind kind = OreKind.of(client.level.getBlockState(target));
-        if (kind == null || !config.autoMiner.oreEnabled(kind)) {
+        if (!config.autoMiner.wants(client.level.getBlockState(target))) {
             abortBreak(client);
             clearTarget();
             state = State.SEARCHING;
@@ -363,17 +370,14 @@ public final class AutoMinerController {
         ClientLevel level = client.level;
         BlockState state = level.getBlockState(pos);
         if (state.isAir()) return Break.DONE;
-        int slot = toolSlot(client, state);
+        int slot = toolSlot(client, state, pos);
         if (slot < 0) return Break.NO_TOOL;
         if (player.getInventory().getSelectedSlot() != slot) player.getInventory().setSelectedSlot(slot);
         Vec3 aim = aimPoint(client, pos);
         if (aim == null) return Break.BLOCKED;
         Vec2 wanted = FreecamMotion.lookAngles(player.getEyePosition(), aim);
-        if (wanted != null) {
-            var turned = MinerRules.turnToward(player.getYRot(), player.getXRot(), wanted.x, wanted.y, (float) config.autoMiner.turnSpeed);
-            player.setYRot(turned.yaw());
-            player.setXRot(turned.pitch());
-        }
+        // Turned a little every rendered frame (SmoothLook), at most turnSpeed per tick.
+        if (wanted != null) SmoothLook.aim(client, wanted.x, wanted.y, (float) config.autoMiner.turnSpeed);
         if (!pos.equals(breaking)) { breaking = pos.immutable(); breakStart = tick; blockedTicks = 0; }
         if (tick - breakStart > BREAK_TIMEOUT_TICKS) { abortBreak(client); return Break.BLOCKED; }
         // The same pick vanilla uses for the crosshair, at vanilla reach.
@@ -429,18 +433,71 @@ public final class AutoMinerController {
         return null;
     }
 
-    private int toolSlot(Minecraft client, BlockState state) {
+    private int toolSlot(Minecraft client, BlockState state, BlockPos pos) {
         var inventory = client.player.getInventory();
         List<MinerRules.Tool> hotbar = new ArrayList<>(9);
         for (int slot = 0; slot < 9; slot++) {
             ItemStack stack = inventory.getItem(slot);
             int usesLeft = stack.isDamageableItem() ? stack.getMaxDamage() - stack.getDamageValue() : -1;
             boolean harvests = !state.requiresCorrectToolForDrops() || stack.isCorrectToolForDrops(state);
-            hotbar.add(new MinerRules.Tool(slot, stack.getDestroySpeed(state), harvests, usesLeft));
+            hotbar.add(new MinerRules.Tool(slot, stack.getDestroySpeed(state), harvests, usesLeft, silkTouch(stack)));
         }
         var settings = config.autoMiner;
+        // Ores follow the Silk Touch settings; tunnel blocks have no preference.
+        Boolean silk = OreKind.of(state) == null ? null : settings.wantsSilk(state);
         return MinerRules.chooseTool(hotbar, inventory.getSelectedSlot(), state.requiresCorrectToolForDrops(),
-                settings.protectTools, settings.toolReserve);
+                settings.protectTools, settings.toolReserve, silk);
+    }
+
+    static boolean silkTouch(ItemStack stack) {
+        for (var enchantment : stack.getEnchantments().keySet())
+            if (enchantment.is(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH)) return true;
+        return false;
+    }
+
+    /** After a break: note items already lying around, then walk over the new drops (the ore's) for a few seconds. */
+    private void beginCollect(Minecraft client, BlockPos origin) {
+        if (!config.autoMiner.collectDrops) { state = State.SEARCHING; return; }
+        collectOrigin = origin.immutable();
+        collectStart = tick;
+        knownItems.clear();
+        skippedItems.clear();
+        for (var item : drops(client)) knownItems.add(item.getId());
+        state = State.COLLECTING;
+    }
+
+    private List<net.minecraft.world.entity.item.ItemEntity> drops(Minecraft client) {
+        return client.level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+                new net.minecraft.world.phys.AABB(collectOrigin).inflate(3), net.minecraft.world.entity.Entity::isAlive);
+    }
+
+    private void collect(Minecraft client) {
+        LocalPlayer player = client.player;
+        var waiting = drops(client).stream().filter(item -> !knownItems.contains(item.getId()) && !skippedItems.contains(item.getId()))
+                .sorted(java.util.Comparator.comparingDouble(item -> item.distanceToSqr(player))).toList();
+        if (waiting.isEmpty()) {
+            navigator.hold(client, false);
+            // Drops arrive from the server a moment after the client predicts the break.
+            if (tick - collectStart > DROP_WAIT_TICKS) finishCollect(client);
+            return;
+        }
+        if (tick - collectStart > COLLECT_TICKS) { finishCollect(client); return; }
+        var item = waiting.getFirst();
+        // Vanilla picks items up within one block of the player's box (after the item's short pickup delay).
+        if (player.getBoundingBox().inflate(1, .5, 1).intersects(item.getBoundingBox())) { navigator.hold(client, false); return; }
+        BlockPos cell = item.blockPosition();
+        MinerRules.View view = view(client.level);
+        var box = item.getBoundingBox();
+        var result = navigator.walkTo(client, cell, at -> MinerRules.standHazard(view, at) == null && MinerRules.reachesItem(at, box));
+        if (result == BuilderNavigator.Result.NO_PATH || result == BuilderNavigator.Result.STUCK) skippedItems.add(item.getId());
+    }
+
+    private void finishCollect(Minecraft client) {
+        collectOrigin = null;
+        knownItems.clear();
+        skippedItems.clear();
+        navigator.release();
+        state = State.SEARCHING;
     }
 
     /** Unloaded positions read as lava, so anything near the edge of loaded data counts as a hazard. */
@@ -487,6 +544,7 @@ public final class AutoMinerController {
         String what = targetKind == null ? "ore" : targetKind.label;
         int distance = target == null || client.player == null ? 0
                 : (int) Math.round(Math.sqrt(Vec3.atCenterOf(target).distanceToSqr(client.player.getEyePosition())));
+        if (state == State.COLLECTING) return "Auto Miner: picking up drops";
         String verb = switch (state) { case WALKING -> "walking to"; case TUNNELING -> "tunneling to"; default -> "mining"; };
         return "Auto Miner: " + verb + " " + what + " " + distance + "m";
     }

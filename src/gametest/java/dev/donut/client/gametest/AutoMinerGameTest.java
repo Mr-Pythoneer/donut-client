@@ -110,7 +110,9 @@ public final class AutoMinerGameTest implements FabricClientGameTest {
                 });
                 screenshot(context, "auto-miner-01-mining");
                 await(context, miner, client -> miner.mined() == 1 && client.level.getBlockState(EXPOSED).isAir(), 600);
-                await(context, miner, client -> miner.state() == State.SEARCHING, 200);
+                // It walks over the drop and picks it up before looking for the next ore.
+                await(context, miner, client -> miner.state() == State.SEARCHING
+                        && client.player.getInventory().countItem(Items.DIAMOND) >= 1, 300);
                 context.waitTicks(80); // Long enough for a fresh sweep; nothing else may be chosen.
                 context.runOnClient(client -> {
                     require(miner.mined() == 1 && miner.target() == null, "Mined something else: " + miner.mined() + " " + miner.target());
@@ -150,6 +152,34 @@ public final class AutoMinerGameTest implements FabricClientGameTest {
                 });
                 stopTracking();
 
+                // 4. Variant filter, Silk Touch and pickup: with stone variants off it ignores a plain emerald ore,
+                // mines the deepslate one with the Silk Touch pick, and picks up the ore block itself.
+                BlockPos deep = new BlockPos(-3, 64, 6), plain = new BlockPos(3, 64, 6);
+                server.runCommand("setblock -3 64 6 minecraft:deepslate_emerald_ore");
+                server.runCommand("setblock 3 64 6 minecraft:emerald_ore");
+                server.runCommand("item replace entity @a hotbar.2 with minecraft:diamond_pickaxe[minecraft:enchantments={\"minecraft:silk_touch\":1}]");
+                context.waitFor(client -> client.player.getInventory().getItem(2).is(Items.DIAMOND_PICKAXE)
+                        && client.level.getBlockState(deep).is(Blocks.DEEPSLATE_EMERALD_ORE), 100);
+                startTracking(context);
+                context.runOnClient(client -> { settings.stoneVariants = false; settings.enabled = true; });
+                await(context, miner, client -> miner.state() == State.MINING && deep.equals(miner.target()) && client.gameMode.isDestroying(), 600);
+                context.runOnClient(client -> require(client.player.getInventory().getSelectedSlot() == 2,
+                        "The Silk Touch pickaxe was not chosen for the deepslate ore"));
+                await(context, miner, client -> client.level.getBlockState(deep).isAir()
+                        && client.player.getInventory().countItem(Items.DEEPSLATE_EMERALD_ORE) >= 1, 600);
+                screenshot(context, "auto-miner-03-silk-pickup");
+                await(context, miner, client -> miner.state() == State.SEARCHING, 200);
+                context.waitTicks(60);
+                context.runOnClient(client -> {
+                    require(client.level.getBlockState(plain).is(Blocks.EMERALD_ORE), "Mined a stone-variant ore with stone variants off");
+                    settings.enabled = false;
+                    settings.stoneVariants = true;
+                });
+                requireNoTeleport();
+                stopTracking();
+                server.runCommand("setblock 3 64 6 minecraft:stone");
+                context.waitFor(client -> client.level.getBlockState(plain).is(Blocks.STONE), 100);
+
                 // 3. Buried on: no walkable spot can see it, so it tunnels 1x2 to it without digging straight down.
                 server.runCommand("setblock " + DEBRIS.getX() + " " + DEBRIS.getY() + " " + DEBRIS.getZ() + " minecraft:stone");
                 server.runCommand("tp @a -9.5 65 0.5 -90 0");
@@ -188,6 +218,7 @@ public final class AutoMinerGameTest implements FabricClientGameTest {
                 settings.turnSpeed = saved.turnSpeed();
                 settings.showHud = saved.showHud();
                 settings.ores = saved.ores();
+                settings.stoneVariants = settings.deepslateVariants = true;
                 config.showHud = saved.showHud2();
             });
         }

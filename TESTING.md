@@ -8,6 +8,20 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-11 (Auto Miner pickup, Silk Touch, variants, smooth turning)
+
+- `build --no-daemon` passed, including the new `AutoMinerVariantsTest`:
+  - deepslate-form detection (Nether ores count as normal);
+  - stone/deepslate filters combined with the ore list;
+  - Silk Touch defaults and persistence, with older files getting the defaults;
+  - the Silk Touch tool preference: prefer, avoid, no preference, and fallback when the Silk Touch tool is missing or protected;
+  - item pickup reach (an item in a one-deep hole is out of reach from the rim);
+  - the per-frame turn step (eased, speed-capped, straight diagonals, converges, snaps tiny errors).
+- `runClientGameTest -PautoMinerTestsOnly=true` passed AutoMinerGameTest, AutoMinerGuiGameTest and ModuleKeybindGameTest. AutoMinerGameTest now also checks:
+  - after mining the exposed diamond ore it walks into the hole and picks up the diamond before searching again;
+  - with stone variants off it leaves a plain emerald ore alone, mines the deepslate emerald with the Silk Touch pickaxe in slot 3, and picks up the deepslate emerald ore block (screenshot `auto-miner-03-silk-pickup`).
+- Smoothness of turning and walking was not measured automatically beyond the turn-step unit test. It needs a look in game.
+
 ## Verified on 2026-11-11 (UI restyle, compact HUD panels, Auto Miner in the click GUI)
 
 - `build --no-daemon` passed with **223 unit tests**, including `ModuleSearchIndexTest` with Auto Miner's setting labels.

@@ -28,6 +28,12 @@ abstract class GameRendererMixin {
         if (multiplier < 1) cir.setReturnValue((float) (cir.getReturnValueF() * multiplier));
     }
 
+    /** Auto Miner turns the view a little every frame, like mouse input, instead of in 20 Hz steps. */
+    @Inject(method = "render", at = @At("HEAD"))
+    private void donut$smoothLook(CallbackInfo ci) {
+        dev.donut.client.automine.SmoothLook.frame(Minecraft.getInstance());
+    }
+
     @Inject(method = "pick", at = @At("HEAD"), cancellable = true)
     private void donut$clearTarget(CallbackInfo ci) {
         if (!FreecamController.enabled()) return;

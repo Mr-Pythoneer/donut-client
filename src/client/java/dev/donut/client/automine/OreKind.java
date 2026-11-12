@@ -48,6 +48,11 @@ public enum OreKind {
         return null;
     }
 
+    /** True for the deepslate form of an ore (deepslate_*_ore); stone and Nether ores are the normal form. */
+    public static boolean deepslate(BlockState state) {
+        return state != null && net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath().startsWith("deepslate_");
+    }
+
     public static OreKind byId(String id) {
         for (OreKind kind : values()) if (kind.id.equals(id)) return kind;
         return null;

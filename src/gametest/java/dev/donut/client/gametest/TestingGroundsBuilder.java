@@ -101,6 +101,8 @@ public final class TestingGroundsBuilder implements FabricClientGameTest {
         String pick = "minecraft:diamond_pickaxe[minecraft:damage=1530]";
         String sword = "minecraft:iron_sword[minecraft:damage=240]";
         run(s, "item replace entity @a hotbar.0 with " + pick, "item replace entity @a hotbar.1 with " + sword,
+                "item replace entity @a hotbar.2 with minecraft:diamond_pickaxe[minecraft:enchantments={\"minecraft:silk_touch\":1}]",
+                "item replace entity @a hotbar.3 with minecraft:iron_pickaxe",
                 "item replace entity @a armor.head with minecraft:iron_helmet[minecraft:damage=158]",
                 "item replace entity @a armor.feet with minecraft:diamond_boots[minecraft:damage=420]",
                 "item replace entity @a weapon.offhand with minecraft:shield[minecraft:damage=330]");

@@ -97,7 +97,7 @@ public final class OreScanner {
                 for (int z = 0; z < 16; z++)
                     for (int x = 0; x < 16; x++) {
                         OreKind kind = OreKind.of(section.getBlockState(x, y, z));
-                        if (kind == null || !settings.oreEnabled(kind)) continue;
+                        if (kind == null || !settings.wants(section.getBlockState(x, y, z))) continue;
                         BlockPos pos = new BlockPos((cx << 4) + x, baseY + y, (cz << 4) + z);
                         if (pos.distSqr(center) <= rangeSq) found.add(pos);
                     }
