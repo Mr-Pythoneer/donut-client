@@ -8,6 +8,19 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-11 (waypoint world keys, label view bobbing, profile names)
+
+- `build --no-daemon` passed with **241 unit tests**. New or extended:
+  - `WaypointsTest`: singleplayer keys come from the save folder (`saves/New World (1)/.` gives `New World (1)`), so two worlds with the same name get different keys, and a folder key can't collide with an old `sp:` name key. Old name-keyed waypoints are copied once per world with color, visibility and date kept, and the old entries stay for other same-named worlds. Deleted copies don't come back. Worlds that already have waypoints are skipped. When the copies wouldn't fit under the limit, the old entries are moved instead.
+  - `WaypointSettingsTest`: the claimed-world list is cleaned, de-duplicated, survives JSON and keeps the newest 1000 entries.
+  - `WaypointLabelsTest`: the bob pose matches vanilla's `bobView`/`bobHurt` formulas (sideways shift and tilts, dip at walk 0, a 14° roll at Damage Tilt 1, 7° at 0.5, the hurt-direction axis, the death roll). There's no bob with View Bobbing off, while standing still, or with Damage Tilt 0. An identity pose gives the old projection, and a bobbed label stays on its projected beam.
+  - `ConfigProfilesTest`: every module key in `ClientConfig` has a display name. The import summary lists favorites as "Durability Alert", "Storage ESP", "Auto Miner" and "Base Finder", not their config keys. Unknown keys are split into words ("chestESPOverlay" gives "Chest ESP Overlay").
+- `runClientGameTest -PqolTestsOnly=true` passed QualityOfLifeGameTest, QualityOfLifeGuiGameTest and ModuleKeybindGameTest on the first run. QualityOfLifeGameTest now also checks:
+  - The test world's key is its save folder (`spdir:New World (2)` for a world named "New World"). A hidden waypoint saved under the old `sp:New World` key is copied to it on first use, and the old entry and claim marker stay.
+  - While strafing with View Bobbing on, `WaypointLabels.cameraBob` equals vanilla's own `bobHurt` + `bobView` result, read through a test-only invoker mixin. It's checked at two moments, with a client-side faked hurt tilt, and again with View Bobbing off (no bob).
+- Screenshots reviewed: `qol-07-walking-a` and `qol-08-walking-b`, two bob phases while walking. In both, each label's anchor dot sits centred above its waypoint box and beam. `qol-gui-04-profiles` shows "Favorites: Coordinates, Zoom, Durability Alert, Waypoints".
+- Not covered: the Nausea and portal screen warp isn't applied to labels.
+
 ## Verified on 2026-11-11 (Auto Miner pickup, Silk Touch, variants, smooth turning)
 
 - `build --no-daemon` passed, including the new `AutoMinerVariantsTest`:
