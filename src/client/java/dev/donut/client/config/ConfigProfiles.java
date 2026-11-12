@@ -48,10 +48,13 @@ public final class ConfigProfiles {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss", Locale.ROOT);
     private static final DateTimeFormatter SHOWN = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.ROOT);
-    private static final Map<String, String> NAMES = Map.ofEntries(
+    /** Human names for module config keys, matching the click GUI. Unknown keys fall back to {@link #displayName}'s word split. */
+    static final Map<String, String> DISPLAY_NAMES = Map.ofEntries(
             Map.entry("freecam", "Freecam"), Map.entry("autoBuilder", "AutoBuilder"), Map.entry("chunkFinder", "Base Finder"),
             Map.entry("lightDebug", "Light Debug"), Map.entry("soundDetector", "Sound Detector"),
             Map.entry("staffDetector", "Staff Detector"), Map.entry("blockEsp", "BlockESP"), Map.entry("storageEsp", "Storage ESP"),
+            Map.entry("coordinates", "Coordinates"), Map.entry("zoom", "Zoom"), Map.entry("durabilityAlert", "Durability Alert"),
+            Map.entry("autoMiner", "Auto Miner"), Map.entry("waypoints", "Waypoints"),
             Map.entry("amethyst", "Amethyst Scanner"), Map.entry("fullbright", "Fullbright"), Map.entry("fly", "Fly"),
             Map.entry("progressBar", "Progress Bar"), Map.entry("nameHider", "Name Hider"), Map.entry("hotbar", "Hotbar"));
 
@@ -224,7 +227,7 @@ public final class ConfigProfiles {
         modules(config).forEach((name, module) -> {
             try {
                 Field favorite = module.getClass().getField("favorite");
-                if (favorite.getType() == boolean.class && favorite.getBoolean(module)) favorites.add(NAMES.getOrDefault(name, name));
+                if (favorite.getType() == boolean.class && favorite.getBoolean(module)) favorites.add(displayName(name));
             } catch (ReflectiveOperationException ignored) { }
         });
         lines.add("Favorites: " + (favorites.isEmpty() ? "none" : String.join(", ", favorites)));
@@ -244,6 +247,39 @@ public final class ConfigProfiles {
         String scale = config.clickGuiStyle == null ? "" : String.format(Locale.ROOT, ", GUI scale %.2f", config.clickGuiStyle.scale);
         lines.add(String.format(Locale.ROOT, "Accent #%06X%s, HUD %s", config.accentColor & 0xFFFFFF, scale, config.showHud ? "on" : "off"));
         return lines;
+    }
+
+    /**
+     * The name a person sees for a module config key: the click GUI's name when known ("durabilityAlert" is
+     * "Durability Alert"), otherwise the key split into capitalized words ("someNewModule" is "Some New Module").
+     */
+    public static String displayName(String key) {
+        if (key == null || key.isBlank()) return "Unknown";
+        String known = DISPLAY_NAMES.get(key.strip());
+        if (known != null) return known;
+        String text = key.strip();
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            boolean gap = out.isEmpty() || out.charAt(out.length() - 1) == ' ';
+            if (c == '_' || c == '-' || Character.isWhitespace(c)) {
+                if (!gap) out.append(' ');
+                continue;
+            }
+            if (!gap) {
+                char previous = text.charAt(i - 1);
+                boolean nextLower = i + 1 < text.length() && Character.isLowerCase(text.charAt(i + 1));
+                boolean wordStart = Character.isUpperCase(c)
+                        && (Character.isLowerCase(previous) || Character.isDigit(previous) || Character.isUpperCase(previous) && nextLower);
+                if (wordStart || Character.isDigit(c) && Character.isLetter(previous)) {
+                    out.append(' ');
+                    gap = true;
+                }
+            }
+            out.append(gap ? Character.toUpperCase(c) : c);
+        }
+        String split = out.toString().strip();
+        return split.isEmpty() ? "Unknown" : split;
     }
 
     private static int size(java.util.Collection<?> values) { return values == null ? 0 : values.size(); }

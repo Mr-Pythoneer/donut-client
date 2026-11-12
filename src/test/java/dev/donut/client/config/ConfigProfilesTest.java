@@ -186,6 +186,43 @@ class ConfigProfilesTest {
         assertTrue(live.fullbright.favorite);
     }
 
+    @Test void summaryFavoritesUseHumanModuleNames() {
+        ClientConfig config = new ClientConfig();
+        config.durabilityAlert.favorite = config.storageEsp.favorite = config.autoMiner.favorite = config.chunkFinder.favorite = true;
+        String text = String.join("\n", ConfigProfiles.summarize(ConfigProfiles.parse(ConfigProfiles.toJson(config, Map.of(), "3.0", NOW))));
+        String favorites = text.lines().filter(line -> line.startsWith("Favorites: ")).findFirst().orElseThrow();
+        for (String name : List.of("Durability Alert", "Storage ESP", "Auto Miner", "Base Finder")) assertTrue(favorites.contains(name), favorites);
+        for (String key : List.of("durabilityAlert", "storageEsp", "autoMiner", "chunkFinder")) assertFalse(favorites.contains(key), favorites);
+    }
+
+    @Test void everyModuleKeyHasAHumanName() {
+        for (var field : ClientConfig.class.getFields()) {
+            if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+            boolean module;
+            try {
+                module = field.getType().getField("enabled").getType() == boolean.class;
+            } catch (NoSuchFieldException e) {
+                module = false;
+            }
+            if (module) assertTrue(ConfigProfiles.DISPLAY_NAMES.containsKey(field.getName()), "No display name for " + field.getName());
+        }
+        assertEquals("Durability Alert", ConfigProfiles.displayName("durabilityAlert"));
+        assertEquals("Storage ESP", ConfigProfiles.displayName("storageEsp"));
+        assertEquals("Auto Miner", ConfigProfiles.displayName("autoMiner"));
+        assertEquals("BlockESP", ConfigProfiles.displayName("blockEsp"));
+    }
+
+    @Test void unknownKeysAreSplitIntoWords() {
+        assertEquals("Some New Module", ConfigProfiles.displayName("someNewModule"));
+        assertEquals("Chest ESP Overlay", ConfigProfiles.displayName("chestESPOverlay"));
+        assertEquals("Tracer 2 Range", ConfigProfiles.displayName("tracer2Range"));
+        assertEquals("Snake Case Key", ConfigProfiles.displayName("snake_case-key"));
+        assertEquals("X", ConfigProfiles.displayName("x"));
+        assertEquals("Unknown", ConfigProfiles.displayName(" "));
+        assertEquals("Unknown", ConfigProfiles.displayName(null));
+        assertEquals("Unknown", ConfigProfiles.displayName("__"));
+    }
+
     @Test void summaryMentionsFavoritesKeybindsAndNotableValues() {
         ConfigProfiles.Profile profile = ConfigProfiles.parse(ConfigProfiles.toJson(customized(), keys(), "3.0", NOW));
         String text = String.join("\n", ConfigProfiles.summarize(profile));
