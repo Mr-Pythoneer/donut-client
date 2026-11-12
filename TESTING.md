@@ -11,6 +11,7 @@ The multiplayer Fly suite uses a dedicated server bound to localhost and logs a 
 ## Verified on 2026-11-11 (Phase 4 Auto Miner)
 
 - On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build test --no-daemon` passed with **223 unit tests** (44 classes), and `runClientGameTest -PautoMinerTestsOnly=true --no-daemon` passed AutoMinerGameTest and ModuleKeybindGameTest. No EULA flag was created or changed.
+- Full `runClientGameTest --no-daemon` was run three times. The third run passed every suite (8 min 15 s). The first failed in SpectreBuilderGuiGameTest ("Missing control libraryMode"); that test passed alone on this branch and on the base commit, and passed in the second run. Its click reads the hit list from the last rendered frame, which can still have the button disabled. The second run failed later with the known intermittent "Network synchronizer in invalid state". The base commit's full suite also passed once for comparison.
 - Unit tests (`AutoMinerRulesTest`, `AutoMinerSettingsTest`):
   - Every ore and its deepslate variant map to one kind (lit redstone too); stone, deepslate, ore blocks, raw blocks, gilded blackstone, amethyst and lava are not ores.
   - Exposure: buried in stone is not exposed; air or cave air on any of the six faces, or glass, exposes it; a neighbouring ore does not.
