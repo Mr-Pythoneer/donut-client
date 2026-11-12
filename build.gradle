@@ -47,6 +47,8 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
     inputs.property('testingGroundsOnly', providers.gradleProperty('testingGroundsOnly').orElse('false'))
     inputs.property('uiPreviewOnly', providers.gradleProperty('uiPreviewOnly').orElse('false'))
     inputs.property('demoReelOnly', providers.gradleProperty('demoReelOnly').orElse('false'))
+    inputs.property('killSwitchTestsOnly', providers.gradleProperty('killSwitchTestsOnly').orElse('false'))
+    inputs.property('antiCheatProbeOnly', providers.gradleProperty('antiCheatProbeOnly').orElse('false'))
     inputs.property('gametestSkip', providers.gradleProperty('gametestSkip').orElse(''))
     inputs.property('autoMinerTestsOnly', providers.gradleProperty('autoMinerTestsOnly').orElse('false'))
     inputs.property('newToolsBTestsOnly', providers.gradleProperty('newToolsBTestsOnly').orElse('false'))
@@ -61,6 +63,19 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
                 !skip.any { entry.endsWith('.' + it) } }
             manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
         }
+        if (providers.gradleProperty('killSwitchTestsOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = ['dev.donut.client.gametest.KillSwitchGameTest']
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        }
+        // Developer tool: joins a local anti-cheat test server (tools/anticheat-server.sh) and exercises each module. Not a test.
+        if (providers.gradleProperty('antiCheatProbeOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = ['dev.donut.client.gametest.AntiCheatProbeGameTest']
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        } else
         // Developer tool: records demo/donut-client-demo.mp4 (needs ffmpeg). Not a test.
         if (providers.gradleProperty('demoReelOnly').orElse('false').get() == 'true') {
             def manifest = new File(destinationDir, 'fabric.mod.json')
@@ -198,9 +213,15 @@ fabricApi {
     }
 }
 
+// Test-build expiry (see KillSwitch): hours of real time after a build first runs; -PkillSwitchHours=0 builds one that never expires.
+def killSwitchHours = providers.gradleProperty('killSwitchHours').orElse('72').get()
+def buildId = project.version + '-' + new Date().format("yyyyMMdd'T'HHmmss", TimeZone.getTimeZone('UTC'))
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'killSwitchHours', killSwitchHours
+    inputs.property 'buildId', buildId
     filesMatching('fabric.mod.json') { expand 'version': project.version }
+    filesMatching('donut-build.properties') { expand 'buildId': buildId, 'killSwitchHours': killSwitchHours }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -215,3 +236,11 @@ java {
 }
 
 jar { from('LICENSE') { rename { "${it}_${project.base.archivesName.get()}" } } }
+
+// Client gametest JVM options: the probe joins a real server whose plugins rewrite packets, which Fabric's
+// network synchronizer cannot follow; and the kill-switch clock lives in the run directory, not in ~/.donut-client.
+tasks.matching { it.name == 'runClientGameTest' }.configureEach {
+    jvmArgs "-Ddonut.killswitch.dir=${layout.buildDirectory.dir('run/clientGameTest-killswitch').get().asFile}"
+    if (providers.gradleProperty('antiCheatProbeOnly').orElse('false').get() == 'true')
+        jvmArgs '-Dfabric.client.gametest.disableNetworkSynchronizer=true'
+}

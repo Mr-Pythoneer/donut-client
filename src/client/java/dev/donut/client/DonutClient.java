@@ -49,6 +49,14 @@ public final class DonutClient implements ClientModInitializer {
 
     /** The live configuration (for runtime tests and helper screens); null before initialization. */
     public static ClientConfig config() { return activeConfig; }
+    private static dev.donut.client.killswitch.KillSwitch activeKillSwitch;
+
+    /** This build's expiry clock (see KillSwitch); null before initialization. */
+    public static dev.donut.client.killswitch.KillSwitch killSwitch() { return activeKillSwitch; }
+
+    /** True once this test build has run out: every module stays off. */
+    public static boolean expired() { return activeKillSwitch != null && activeKillSwitch.expired(System.currentTimeMillis()); }
+    private boolean expiryNoticeShown;
     private ConfigStore store;
     private ClientConfig config;
     private ChunkFinderScanner chunkScanner;
@@ -97,6 +105,10 @@ public final class DonutClient implements ClientModInitializer {
         autoEat = new dev.donut.client.autoeat.AutoEatController(config);
         newChunks = new dev.donut.client.newchunks.NewChunksController(config);
         stashFinder = new dev.donut.client.stash.StashFinderController(config);
+        activeKillSwitch = new dev.donut.client.killswitch.KillSwitch(dev.donut.client.killswitch.KillSwitch.currentBuild(),
+                dev.donut.client.killswitch.KillSwitch.defaultFile(), System.currentTimeMillis());
+        // Registered before every module's tick, so an expired build never runs a module for even one tick.
+        ClientTickEvents.START_CLIENT_TICK.register(this::enforceKillSwitch);
         ClientTickEvents.END_CLIENT_TICK.register(auto -> {
             dev.donut.client.spectrebuilder.BuilderPlacement.tick(auto);
             dev.donut.client.spectrebuilder.CreativeBuilder.INSTANCE.tick(auto);
@@ -162,10 +174,12 @@ public final class DonutClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ProgressTimers.tick(config);
-            boolean inputBlocked = ModuleKeybinds.inputBlocked(client);
+            boolean menuBlocked = ModuleKeybinds.inputBlocked(client);
             while (open.consumeClick()) {
-                if (!inputBlocked && client.screen == null) client.setScreen(new DonutScreen(config, this::save));
+                if (!menuBlocked && client.screen == null) client.setScreen(new DonutScreen(config, this::save));
             }
+            // After the kill switch fires the menu still opens (it explains why), but no shortcut switches a module on.
+            boolean inputBlocked = menuBlocked || expired();
             if (ModuleKeybinds.consumePress(client, 2)) {
                 if (!inputBlocked && client.screen == null && client.player != null) freecam.setEnabled(!freecam.isActive());
             }
@@ -377,4 +391,40 @@ public final class DonutClient implements ClientModInitializer {
     }
 
     private void save() { store.save(config); }
+
+    private void enforceKillSwitch(net.minecraft.client.Minecraft client) {
+        if (!expired()) return;
+        if (disableEverything()) save();
+        if (!expiryNoticeShown && client.player != null) {
+            expiryNoticeShown = true;
+            // Shown only on this screen; nothing is sent to the server.
+            client.player.displayClientMessage(Component.literal("Donut Client: this test build has expired ("
+                    + activeKillSwitch.build().hours() / 24 + " days after its first run). Every module is off; ask for a newer build."), false);
+        }
+    }
+
+    /** Switches every module off. Returns whether anything was on. */
+    private boolean disableEverything() {
+        boolean changed = false;
+        FreecamController freecam = FreecamController.getInstance();
+        if (freecam != null && freecam.isActive()) { freecam.setEnabled(false); changed = true; }
+        FlyController fly = FlyController.getInstance();
+        if (fly != null && fly.isActive()) { fly.setEnabled(false); changed = true; }
+        AutoBuilderController builder = AutoBuilderController.get();
+        if (builder != null && (builder.isRunning() || builder.status() == AutoBuilderController.Status.PAUSED)) { builder.cancel(); changed = true; }
+        if (dev.donut.client.spectrebuilder.CreativeBuilder.INSTANCE.running()) { dev.donut.client.spectrebuilder.CreativeBuilder.INSTANCE.stop(); changed = true; }
+        ClientConfig c = config;
+        boolean[] on = {c.chunkFinder.enabled, c.fullbright.enabled, c.progressBar.enabled, c.nameHider.enabled, c.hotbar.enabled,
+                c.amethyst.enabled, c.lightDebug.enabled, c.soundDetector.enabled, c.blockEsp.enabled, c.staffDetector.enabled,
+                c.storageEsp.enabled, c.coordinates.enabled, c.waypoints.enabled, c.zoom.enabled, c.durabilityAlert.enabled,
+                c.autoMiner.enabled, c.freelook.enabled, c.playerEsp.enabled, c.search.enabled, c.hudWidgets.enabled,
+                c.newChunks.enabled, c.stashFinder.enabled, c.autoReconnect.enabled, c.autoEat.enabled};
+        for (boolean value : on) changed |= value;
+        c.chunkFinder.enabled = c.fullbright.enabled = c.progressBar.enabled = c.nameHider.enabled = c.hotbar.enabled = false;
+        c.amethyst.enabled = c.lightDebug.enabled = c.soundDetector.enabled = c.blockEsp.enabled = c.staffDetector.enabled = false;
+        c.storageEsp.enabled = c.coordinates.enabled = c.waypoints.enabled = c.zoom.enabled = c.durabilityAlert.enabled = false;
+        c.autoMiner.enabled = c.freelook.enabled = c.playerEsp.enabled = c.search.enabled = c.hudWidgets.enabled = false;
+        c.newChunks.enabled = c.stashFinder.enabled = c.autoReconnect.enabled = c.autoEat.enabled = false;
+        return changed;
+    }
 }

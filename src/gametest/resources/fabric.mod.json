@@ -9,6 +9,7 @@
   ],
   "entrypoints": {
     "fabric-client-gametest": [
+      "dev.donut.client.gametest.KillSwitchGameTest",
       "dev.donut.client.gametest.FreelookGameTest",
       "dev.donut.client.gametest.AutoEatGameTest",
       "dev.donut.client.gametest.AutoReconnectGameTest",

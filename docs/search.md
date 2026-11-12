@@ -44,3 +44,5 @@ Search works exactly like Storage ESP:
 ## Validation
 
 `./gradlew test` covers settings defaults, clamps, JSON round trips, unknown keys and list repair; block-ID normalisation, registry validation (unknown, air, malformed) and suggestion order; and box merging (rows, cubes, L-shapes and 200 random shapes checked for an exact partition). `./gradlew runClientGameTest -PnewToolsBTestsOnly=true` runs the runtime suite against `/setblock` fixtures behind a wall (empty list, counts, merged boxes, the rendered frame, tracers, single and multi-block updates, range, the nearest-N cap, list changes, disable and disconnect) and the GUI suite (typed IDs with suggestions and validation, Add looked-at block, remove, persistence, shortcut and array list), plus the module-keybind regression suite.
+
+**Anti-xray (tested 2026-11-12):** on a server with Paper's anti-xray in engine mode 2, Search showed about 63,000 "diamonds" within 64 blocks, and none of the 40 nearest were real. Anti-xray sends fake ores in place of hidden blocks, and Search can only show what the server sends. Exposed ores, the ones touching air, are real. See [anticheat-results.md](anticheat-results.md).

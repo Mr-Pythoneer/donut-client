@@ -1,5 +1,9 @@
 # Donut Client
 
+**Anti-cheat results:** see [docs/anticheat-results.md](docs/anticheat-results.md) for which modules Grim, Intave, Spartan and others flagged on a local test server.
+
+**Test builds expire:** 72 hours after a build first runs on a computer, every module switches off for good. Install a newer build to get a fresh 3 days. See [the guide](docs/GUIDE.md#test-builds-expire-after-3-days).
+
 **New here? Start with the [full guide](docs/GUIDE.md):** every tool explained, with a short video clip of each one and a [full video tour](docs/videos/donut-client-demo.mp4).
 
 A client-side Fabric mod for Minecraft Java 1.21.11 with Player ESP, Search, Freelook, HUD widgets, NewChunks, Stash Finder, Auto Reconnect, Auto Eat, Staff Detector, BlockESP, Storage ESP, Waypoints, Coordinates, Zoom, Durability Alert, Sound Detector, Base Finder, Amethyst Scanner, Light Debug, Fullbright, Freecam, Fly, AutoBuilder, Auto Miner, streaming Progress Bar, Name Hider and Hotbar modules, module keybinds, and a minimal HUD.

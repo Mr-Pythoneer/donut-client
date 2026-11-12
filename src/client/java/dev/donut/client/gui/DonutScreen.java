@@ -796,6 +796,8 @@ public final class DonutScreen extends Screen {
         if (tab == 1) contentProgress = 0;
     }
     private void toggleEnabled(int index) {
+        // An expired test build keeps every module off (see KillSwitch); the footer says why.
+        if (dev.donut.client.DonutClient.expired()) return;
         if (index == 28) {
             change(() -> config.autoEat.enabled = !config.autoEat.enabled);
         } else if (index == 27) {
@@ -1789,8 +1791,19 @@ public final class DonutScreen extends Screen {
             if (enabled(index)) active++;
         }
         String status = active + " of " + modules + " modules on";
+        int statusColor = DIM;
+        var killSwitch = dev.donut.client.DonutClient.killSwitch();
+        if (killSwitch != null && killSwitch.active()) {
+            long left = killSwitch.remaining(System.currentTimeMillis());
+            if (dev.donut.client.DonutClient.expired()) {
+                status = "Test build expired: modules are off";
+                statusColor = 0xFFE0705A;
+            } else {
+                status += "  \u00B7  test build, " + dev.donut.client.killswitch.KillSwitch.describe(left) + " left";
+            }
+        }
         int statusW = WorkspacePaint.smallWidth(font, status);
-        smallText(g, font, status, W - 24 - statusW, midSmall(top, height), DIM);
+        smallText(g, font, status, W - 24 - statusW, midSmall(top, height), statusColor);
         String message = binding >= 0 ? "Press a key. Delete clears, Esc cancels." : "";
         if (hoveredBinding >= 0 && binding < 0) {
             String conflict = conflicts(hoveredBinding);

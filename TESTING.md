@@ -8,6 +8,27 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-12 (kill switch, anti-cheat probe)
+
+- `build test --offline` passed with **330 unit tests**, including 8 for `KillSwitchTest`:
+  - expiry maths and the time-left wording;
+  - the clock surviving restarts and running while the game is closed;
+  - setting the clock back not adding time;
+  - a separate clock per build;
+  - damaged state files;
+  - `-PkillSwitchHours=0` builds writing nothing.
+- `runClientGameTest -PkillSwitchTestsOnly=true` (`KillSwitchGameTest`) passed. With Freecam, Storage ESP, Fullbright, Auto Miner and Search running, a stored clock 73 hours old switches them all off within 2 ticks. After that:
+  - the Freecam shortcut does nothing, and Fly is switched straight back off;
+  - the menu's switch can't enable Storage ESP, and the footer reads "Test build expired";
+  - a local chat line explains why.
+
+  A fresh clock restores everything, and the footer shows "2d 23h left". It uses `build/run/clientGameTest-killswitch`, never `~/.donut-client`.
+- Full `runClientGameTest -PgametestSkip=SpectreBuilderGuiGameTest,FlyMultiplayerGameTest` passed every suite in one run (13 min 50 s).
+- Anti-cheat probe (`-PantiCheatProbeOnly=true` against `tools/anticheat-server.sh`, on Purpur 1.21.11 with 7 anti-cheats and anti-xray): 3 passes, results in [docs/anticheat-results.md](docs/anticheat-results.md).
+  - **Auto Reconnect** rejoined a real server after a kick.
+  - **NewChunks** found nothing on a Paper-based server.
+  - The probe's own fixes along the way: peaceful difficulty, since the 1.21.11 gamerules are renamed and a spider killed the player in pass 2; respawning when joining while dead; not counting fixture teleports as setbacks; and turning off the gametest network synchronizer, which can't follow servers whose plugins rewrite packets.
+
 ## Verified on 2026-11-11 (eight new modules: Freelook, Player ESP, Search, HUD widgets, NewChunks, Stash Finder, Auto Reconnect, Auto Eat)
 
 - `build --no-daemon` passed with **322 unit tests**.

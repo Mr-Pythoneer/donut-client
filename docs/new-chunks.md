@@ -47,3 +47,5 @@ The overlay is a thin flat square per chunk, slightly inset so neighbouring chun
 - Game test `NewChunksGameTest` (`-PnewToolsCTestsOnly=true`):
   1. Flat test world (deterministic): no liquid, nothing marked; pouring water marks that chunk new through the real packet path and the renderer receives its box; after leaving until the client forgets the chunk, clearing the session and coming back, the chunk arrives with settled water and is marked old.
   2. Real terrain (fixed seed, spectator above it): flying into ungenerated terrain marks at least one chunk new. Only "some" is asserted, because real terrain never guarantees liquid in a given chunk, and the old/new split is affected by chunk batching (above).
+
+**Tested on a real server (2026-11-12):** on a Purpur 1.21.11 server (Paper-based), a never-visited area produced 0 "new" marks. Paper-based servers don't send the signal NewChunks looks for, so expect it to find nothing there. See [anticheat-results.md](anticheat-results.md).

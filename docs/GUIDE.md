@@ -10,6 +10,7 @@ All clips were recorded automatically in a singleplayer test world by the demo-r
 
 - [What Donut Client is](#what-donut-client-is)
 - [Install](#install)
+- [Test builds expire after 3 days](#test-builds-expire-after-3-days)
 - [The menu](#the-menu)
 - [In-game panels (HUD)](#in-game-panels-hud)
 - [Visual tools](#visual-tools)
@@ -46,6 +47,7 @@ All clips were recorded automatically in a singleplayer test world by the demo-r
 - [Testing grounds](#testing-grounds)
 - [Developer tools](#developer-tools)
 - [Client-side only: what that means](#client-side-only-what-that-means)
+- [How it fares against anti-cheats](#how-it-fares-against-anti-cheats)
 
 ---
 
@@ -68,6 +70,20 @@ Donut Client is a normal **Fabric mod** for Minecraft Java **1.21.11**. It is no
 4. Start the game and press **Right Shift** in a world.
 
 To build the jar yourself, run `./gradlew build` with JDK 21 (on Windows, `.\gradlew.bat build`). The jar appears in `build/libs/`.
+
+## Test builds expire after 3 days
+
+Every build has a kill switch. **72 hours after a build first runs on a computer, every module switches off and stays off.** The clock runs in real time, whether or not the game is open.
+
+- **Time left:** the menu's footer shows it, for example "test build, 2d 5h left".
+- **When it runs out:**
+  - Every running module stops, including Freecam, Fly, AutoBuilder and Auto Miner.
+  - Shortcuts and the menu's switches do nothing.
+  - A local chat line explains why. Nothing is sent to the server.
+- **A newer build** starts its own 3-day clock, so the fix is to install the latest release.
+- **Where the clock lives:** `~/.donut-client/activations.properties`, with one line per build. It sits outside `.minecraft`, so a fresh instance or a deleted config doesn't reset it. The latest time seen is saved too, so setting the computer's clock back doesn't add time.
+- **What it isn't:** copy protection. It's a convenience limit for passing test builds around.
+- **Builders:** `./gradlew build -PkillSwitchHours=0` builds a jar that never expires, and `-PkillSwitchHours=N` sets another lifetime. The default is 72.
 
 ## The menu
 
@@ -548,3 +564,16 @@ All of these need JDK 21. On this machine, set `JAVA_HOME` and `GRADLE_USER_HOME
 - **Actions:** the automation (Auto Miner, AutoBuilder, Fly on servers) uses the same actions you could do by hand, at normal speed and reach. It sends no custom packets and never teleports.
 - **Display-only modules:** Freecam, Zoom, Fullbright, the ESPs and the privacy modules only change what your screen shows.
 - **Not hidden:** nothing is designed to hide from a server's anti-cheat. Servers set their own rules, and automation in particular is often not allowed.
+
+## How it fares against anti-cheats
+
+On 2026-11-12 every module that talks to the server was run on a local test server with GrimAC, Intave, Spartan, OmniAnticheat, BS-AntiCheat, DonutAntiCheat, a freecam detector and Paper's anti-xray. In short:
+
+- **No anti-cheat reacted** to the visual and HUD modules, Freecam, Freelook, Staff Detector or Auto Reconnect. Auto Reconnect also rejoined a real server by itself.
+- **Auto Miner, AutoBuilder and Auto Eat get flagged** by Grim or Spartan.
+- **Fly** gets you kicked or banned within seconds.
+- **Search is fooled by anti-xray:** almost every "ore" it shows is fake.
+- **BlockESP's seed prediction isn't fooled:** 40 of 40 checked diamonds were real.
+- **NewChunks** found nothing on a Paper-based server.
+
+The full table, and how to rerun it, is in [anticheat-results.md](anticheat-results.md).
