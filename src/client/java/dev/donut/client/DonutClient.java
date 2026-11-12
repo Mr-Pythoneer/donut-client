@@ -67,6 +67,8 @@ public final class DonutClient implements ClientModInitializer {
     private dev.donut.client.freelook.FreelookController freelook;
     private dev.donut.client.autoreconnect.AutoReconnectController autoReconnect;
     private dev.donut.client.autoeat.AutoEatController autoEat;
+    private dev.donut.client.newchunks.NewChunksController newChunks;
+    private dev.donut.client.stash.StashFinderController stashFinder;
 
     @Override
     public void onInitializeClient() {
@@ -93,6 +95,8 @@ public final class DonutClient implements ClientModInitializer {
         freelook = new dev.donut.client.freelook.FreelookController(config);
         autoReconnect = new dev.donut.client.autoreconnect.AutoReconnectController(config);
         autoEat = new dev.donut.client.autoeat.AutoEatController(config);
+        newChunks = new dev.donut.client.newchunks.NewChunksController(config);
+        stashFinder = new dev.donut.client.stash.StashFinderController(config);
         ClientTickEvents.END_CLIENT_TICK.register(auto -> {
             dev.donut.client.spectrebuilder.BuilderPlacement.tick(auto);
             dev.donut.client.spectrebuilder.CreativeBuilder.INSTANCE.tick(auto);
@@ -151,6 +155,10 @@ public final class DonutClient implements ClientModInitializer {
         ModuleKeybinds.register(27, bind("toggle_auto_reconnect", InputConstants.UNKNOWN.getValue(), category));
         ModuleKeybinds.register(28, bind("toggle_auto_eat", InputConstants.UNKNOWN.getValue(), category));
         freelook.setKey(bind("freelook", GLFW.GLFW_KEY_LEFT_ALT, category));
+        ModuleKeybinds.register(24, bind("toggle_hud_widgets", InputConstants.UNKNOWN.getValue(), category));
+        ModuleKeybinds.register(25, bind("toggle_new_chunks", InputConstants.UNKNOWN.getValue(), category));
+        ModuleKeybinds.register(26, bind("toggle_stash_finder", InputConstants.UNKNOWN.getValue(), category));
+        KeyMapping stashMenu = bind("stash_menu", InputConstants.UNKNOWN.getValue(), category);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ProgressTimers.tick(config);
@@ -271,6 +279,19 @@ public final class DonutClient implements ClientModInitializer {
             }
             freelook.tick(client);
             autoEat.tick(client);
+            for (int module = 24; module <= 26; module++) {
+                if (!ModuleKeybinds.consumePress(client, module) || inputBlocked || client.screen != null || client.player == null) continue;
+                switch (module) {
+                    case 24 -> config.hudWidgets.enabled = !config.hudWidgets.enabled;
+                    case 25 -> config.newChunks.enabled = !config.newChunks.enabled;
+                    default -> config.stashFinder.enabled = !config.stashFinder.enabled;
+                }
+                save();
+            }
+            while (stashMenu.consumeClick()) if (!inputBlocked && client.screen == null && client.player != null)
+                client.setScreen(new dev.donut.client.gui.StashScreen(null, config, this::save));
+            newChunks.tick(client);
+            stashFinder.tick(client);
         });
         ScreenEvents.AFTER_INIT.register(autoReconnect::screenInit);
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> autoReconnect.joined(client));
@@ -326,7 +347,9 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.gui.SearchHud.render(graphics, config, search));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "player_esp_tags"), (graphics, delta) ->
                 dev.donut.client.gui.PlayerEspLabels.render(graphics, config));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { playerEsp.disconnect(); search.disconnect(); staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); freelook.disconnect(); autoEat.disconnect(); });
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud_widgets"), (graphics, delta) ->
+                dev.donut.client.gui.HudWidgetsHud.render(graphics, config));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { playerEsp.disconnect(); search.disconnect(); staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); freelook.disconnect(); autoEat.disconnect(); newChunks.disconnect(); stashFinder.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
             fullbright.close();
@@ -341,6 +364,8 @@ public final class DonutClient implements ClientModInitializer {
             storageEsp.clear();
             playerEsp.clear();
             search.clear();
+            newChunks.clear();
+            stashFinder.disconnect();
             soundDetector.disconnect();
             staffDetector.disconnect();
             renderer.close();

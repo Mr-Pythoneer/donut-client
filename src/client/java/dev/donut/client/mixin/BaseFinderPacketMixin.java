@@ -19,6 +19,8 @@ abstract class BaseFinderPacketMixin {
         AmethystScanner.packetApplied(packet);
         dev.donut.client.storageesp.StorageEspScanner.packetApplied(packet);
         dev.donut.client.search.SearchScanner.packetApplied(packet);
+        dev.donut.client.newchunks.NewChunksController.packetApplied(packet);
+        dev.donut.client.stash.StashFinderController.packetApplied(packet);
         ChunkFinderScanner.lightQueued(Minecraft.getInstance().level, packet.getX(), packet.getZ());
     }
     @Inject(method = "handleLightUpdatePacket", at = @At("RETURN"))
@@ -26,9 +28,15 @@ abstract class BaseFinderPacketMixin {
         ChunkFinderScanner.lightQueued(Minecraft.getInstance().level, packet.getX(), packet.getZ());
     }
     @Inject(method = "handleBlockUpdate", at = @At("RETURN"))
-    private void donut$block(ClientboundBlockUpdatePacket packet, CallbackInfo ci) { ChunkFinderScanner.packetApplied(packet); AmethystScanner.packetApplied(packet); dev.donut.client.storageesp.StorageEspScanner.packetApplied(packet); dev.donut.client.search.SearchScanner.packetApplied(packet); }
+    private void donut$block(ClientboundBlockUpdatePacket packet, CallbackInfo ci) { ChunkFinderScanner.packetApplied(packet); AmethystScanner.packetApplied(packet); dev.donut.client.storageesp.StorageEspScanner.packetApplied(packet); dev.donut.client.search.SearchScanner.packetApplied(packet); newTools(packet); }
     @Inject(method = "handleChunkBlocksUpdate", at = @At("RETURN"))
-    private void donut$section(ClientboundSectionBlocksUpdatePacket packet, CallbackInfo ci) { ChunkFinderScanner.packetApplied(packet); AmethystScanner.packetApplied(packet); dev.donut.client.storageesp.StorageEspScanner.packetApplied(packet); dev.donut.client.search.SearchScanner.packetApplied(packet); }
+    private void donut$section(ClientboundSectionBlocksUpdatePacket packet, CallbackInfo ci) { ChunkFinderScanner.packetApplied(packet); AmethystScanner.packetApplied(packet); dev.donut.client.storageesp.StorageEspScanner.packetApplied(packet); dev.donut.client.search.SearchScanner.packetApplied(packet); newTools(packet); }
     @Inject(method = "handleForgetLevelChunk", at = @At("RETURN"))
-    private void donut$forget(ClientboundForgetLevelChunkPacket packet, CallbackInfo ci) { ChunkFinderScanner.packetApplied(packet); AmethystScanner.packetApplied(packet); dev.donut.client.storageesp.StorageEspScanner.packetApplied(packet); dev.donut.client.search.SearchScanner.packetApplied(packet); }
+    private void donut$forget(ClientboundForgetLevelChunkPacket packet, CallbackInfo ci) { ChunkFinderScanner.packetApplied(packet); AmethystScanner.packetApplied(packet); dev.donut.client.storageesp.StorageEspScanner.packetApplied(packet); dev.donut.client.search.SearchScanner.packetApplied(packet); dev.donut.client.stash.StashFinderController.packetApplied(packet); }
+
+    /** NewChunks and Stash Finder observe the same applied block updates. */
+    private static void newTools(net.minecraft.network.protocol.Packet<?> packet) {
+        dev.donut.client.newchunks.NewChunksController.packetApplied(packet);
+        dev.donut.client.stash.StashFinderController.packetApplied(packet);
+    }
 }

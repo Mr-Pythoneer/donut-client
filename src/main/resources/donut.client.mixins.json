@@ -33,7 +33,8 @@
     "AutoMinerInputMixin",
     "FreelookCameraMixin",
     "DisconnectedScreenAccessor",
-    "AutoReconnectConnectMixin"
+    "AutoReconnectConnectMixin",
+    "HudWidgetsMouseMixin"
   ],
   "injectors": {
     "defaultRequire": 1

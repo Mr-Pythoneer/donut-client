@@ -521,6 +521,9 @@ public final class DonutScreen extends Screen {
             case 15 -> "storage esp storageesp chest chests double chest trapped barrel shulker ender hopper dropper dispenser furnace smoker blast brewing crafter pot bookshelf minecart boat container stash";
             case 22 -> "player esp playeresp players entity entities through walls wallhack nametag nametags tracers health armor armour friends mobs animals items";
             case 23 -> "search block search blockfinder block finder find blocks xray x-ray highlight id spawner ancient debris diamond ore portal";
+            case 24 -> "hud widgets fps frames ping latency cps clicks memory ram clock time server address compass direction keystrokes key strokes wasd armour armor durability potion effects";
+            case 25 -> "newchunks new chunks old chunks generated fresh liquid water lava flow chunk trail exploration";
+            case 26 -> "stash finder stashfinder stash base chests storage shulker barrel log export csv json waypoint";
             default -> "autobuilder auto builder schematic litematic building materials navigation";
         };
         String needle = query.toLowerCase(Locale.ROOT).trim();
@@ -540,6 +543,9 @@ public final class DonutScreen extends Screen {
         else if (index == 23) drawSearchSettings(g);
         else if (index == 22) drawPlayerEspSettings(g);
         else if (index == 21) drawFreelookSettings(g);
+        else if (index == 26) drawStashFinderSettings(g);
+        else if (index == 25) drawNewChunksSettings(g);
+        else if (index == 24) drawHudWidgetsSettings(g);
         else if (index == 20) drawAutoMinerSettings(g);
         else if (index == 19) drawDurabilityAlertSettings(g);
         else if (index == 18) drawZoomSettings(g);
@@ -710,6 +716,9 @@ public final class DonutScreen extends Screen {
             case 28 -> "Eat hotbar food when hungry, then switch back";
             case 22 -> "See loaded players through walls, with nametags";
             case 23 -> "Highlight any blocks you choose through walls";
+            case 24 -> "FPS, ping, CPS, armour, potions and more in compact panels";
+            case 25 -> "Mark chunks the server is generating for the first time";
+            case 26 -> "Log chunks packed with storage and export the list";
             default -> "Move through your world with vanilla flight";
         };
     }
@@ -754,14 +763,17 @@ public final class DonutScreen extends Screen {
         }
     }
 
-    private boolean enabled(int index) { return index == 28 ? config.autoEat.enabled : index == 27 ? config.autoReconnect.enabled : index == 23 ? config.search.enabled : index == 22 ? config.playerEsp.enabled : index == 21 ? config.freelook.enabled : index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
-    private boolean favorite(int index) { return index == 28 ? config.autoEat.favorite : index == 27 ? config.autoReconnect.favorite : index == 23 ? config.search.favorite : index == 22 ? config.playerEsp.favorite : index == 21 ? config.freelook.favorite : index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
+    private boolean enabled(int index) { return index == 28 ? config.autoEat.enabled : index == 27 ? config.autoReconnect.enabled : index == 26 ? config.stashFinder.enabled : index == 25 ? config.newChunks.enabled : index == 24 ? config.hudWidgets.enabled : index == 23 ? config.search.enabled : index == 22 ? config.playerEsp.enabled : index == 21 ? config.freelook.enabled : index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
+    private boolean favorite(int index) { return index == 28 ? config.autoEat.favorite : index == 27 ? config.autoReconnect.favorite : index == 26 ? config.stashFinder.favorite : index == 25 ? config.newChunks.favorite : index == 24 ? config.hudWidgets.favorite : index == 23 ? config.search.favorite : index == 22 ? config.playerEsp.favorite : index == 21 ? config.freelook.favorite : index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
     private void toggleFavorite(int index) {
         if (index == 28) config.autoEat.favorite = !config.autoEat.favorite;
         else if (index == 27) config.autoReconnect.favorite = !config.autoReconnect.favorite;
         else if (index == 23) config.search.favorite = !config.search.favorite;
         else if (index == 22) config.playerEsp.favorite = !config.playerEsp.favorite;
         else if (index == 21) config.freelook.favorite = !config.freelook.favorite;
+        else if (index == 26) config.stashFinder.favorite = !config.stashFinder.favorite;
+        else if (index == 25) config.newChunks.favorite = !config.newChunks.favorite;
+        else if (index == 24) config.hudWidgets.favorite = !config.hudWidgets.favorite;
         else if (index == 20) config.autoMiner.favorite = !config.autoMiner.favorite;
         else if (index == 19) config.durabilityAlert.favorite = !config.durabilityAlert.favorite;
         else if (index == 18) config.zoom.favorite = !config.zoom.favorite;
@@ -794,6 +806,12 @@ public final class DonutScreen extends Screen {
             change(() -> config.playerEsp.enabled = !config.playerEsp.enabled);
         } else if (index == 21) {
             change(() -> config.freelook.enabled = !config.freelook.enabled);
+        } else if (index == 26) {
+            change(() -> config.stashFinder.enabled = !config.stashFinder.enabled);
+        } else if (index == 25) {
+            change(() -> config.newChunks.enabled = !config.newChunks.enabled);
+        } else if (index == 24) {
+            change(() -> config.hudWidgets.enabled = !config.hudWidgets.enabled);
         } else if (index == 20) {
             change(() -> config.autoMiner.enabled = !config.autoMiner.enabled);
         } else if (index == 19) {
@@ -838,7 +856,7 @@ public final class DonutScreen extends Screen {
         }
     }
     private String name(int index) {
-        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; case 21 -> "Freelook"; case 22 -> "Player ESP"; case 23 -> "Search"; case 27 -> "Auto Reconnect"; case 28 -> "Auto Eat"; default -> "AutoBuilder"; };
+        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; case 21 -> "Freelook"; case 22 -> "Player ESP"; case 23 -> "Search"; case 24 -> "HUD Widgets"; case 25 -> "NewChunks"; case 26 -> "Stash Finder"; case 27 -> "Auto Reconnect"; case 28 -> "Auto Eat"; default -> "AutoBuilder"; };
     }
 
     private void drawHotbarSettings(GuiGraphics g, int ignored) {
@@ -1279,6 +1297,86 @@ public final class DonutScreen extends Screen {
         section(g, "Display", 0);
         settingToggle(g, "eatHud", "Show HUD while eating", 0, () -> value.showHud, () -> value.showHud = !value.showHud);
         help(g, "Picks the most filling allowed food in your hotbar (never from the inventory), eats it with normal item use and switches back. Waits in menus, in Creative, while you use another item, and lets Auto Miner finish its target unless hunger is " + dev.donut.client.config.AutoEatSettings.CRITICAL_HUNGER + " or lower.");
+    }
+
+    private void drawHudWidgetsSettings(GuiGraphics g) {
+        var value = config.hudWidgets;
+        section(g, "Widgets", 0);
+        // Toggle ids are "m24.widget-<id>"; corner buttons "m24.corner-<id>" cycle through the four corners.
+        for (var widget : dev.donut.client.hudwidgets.HudWidget.values()) {
+            settingToggle(g, "widget-" + widget.id, widget.label, 0, () -> value.widgetEnabled(widget),
+                    () -> value.setWidgetEnabled(widget, !value.widgetEnabled(widget)));
+            if (!value.widgetEnabled(widget)) continue;
+            button(g, "m24.corner-" + widget.id, "Corner: " + value.corner(widget), rowX, settingsCursor, rowW, s(30),
+                    () -> change(() -> value.cycleCorner(widget)));
+            settingsCursor += s(40);
+        }
+        help(g, "Text widgets in one corner share a panel. Top right starts below the module list and vanilla's effect icons.");
+        section(g, "Details", 0);
+        settingToggle(g, "clock24h", "24-hour clock", 0, () -> value.clock24h, () -> value.clock24h = !value.clock24h);
+        settingToggle(g, "showGameTime", "In-game day and time", 0, () -> value.showGameTime, () -> value.showGameTime = !value.showGameTime);
+        settingToggle(g, "memoryPercent", "Memory percentage", 0, () -> value.memoryPercent, () -> value.memoryPercent = !value.memoryPercent);
+        help(g, "Hidden with F1, F3, menus and the HUD switch; size follows HUD > Panel size. Ping reads your tab-list latency. CPS counts only your own clicks.");
+    }
+
+    private void drawNewChunksSettings(GuiGraphics g) {
+        var value = config.newChunks;
+        var controller = dev.donut.client.newchunks.NewChunksController.get();
+        section(g, "Detection", 0);
+        help(g, controller == null || !value.enabled || minecraft.level == null ? "Enable NewChunks in a world. Only chunks received while it is on are classified."
+                : controller.tracker().newCount() + " new, " + controller.tracker().oldCount() + " old chunks this session.");
+        button(g, "m25.clear", "Clear marks", rowX, settingsCursor, rowW, s(34), () -> {
+            var current = dev.donut.client.newchunks.NewChunksController.get();
+            if (current != null) current.tracker().clear();
+        });
+        settingsCursor += s(44);
+        section(g, "Display", 0);
+        settingToggle(g, "showNew", "Show new chunks", 0, () -> value.showNew, () -> value.showNew = !value.showNew);
+        colorRow(g, "New chunk color", 0, () -> value.newColor, next -> value.newColor = next & 0xFFFFFF);
+        settingToggle(g, "showOld", "Show old chunks", 0, () -> value.showOld, () -> value.showOld = !value.showOld);
+        colorRow(g, "Old chunk color", 0, () -> value.oldColor, next -> value.oldColor = next & 0xFFFFFF);
+        slider(g, "range", "Range", 0, () -> value.range, next -> value.range = (int) next,
+                dev.donut.client.config.NewChunksSettings.MIN_RANGE, dev.donut.client.config.NewChunksSettings.MAX_RANGE, 1, " chunks");
+        slider(g, "height", "Overlay height (Y)", 0, () -> value.height, next -> value.height = (int) next,
+                dev.donut.client.config.NewChunksSettings.MIN_HEIGHT, dev.donut.client.config.NewChunksSettings.MAX_HEIGHT, 1, "");
+        slider(g, "opacity", "Opacity", 0, () -> value.opacity, next -> value.opacity = (int) next, 0, 255, 1, "");
+        settingToggle(g, "outlines", "Outlines", 0, () -> value.outlines, () -> value.outlines = !value.outlines);
+        settingToggle(g, "throughWalls", "Through walls", 0, () -> value.throughWalls, () -> value.throughWalls = !value.throughWalls);
+        help(g, "New: liquid started flowing right after the chunk arrived (its fluid ticks ran for the first time). Old: the chunk "
+                + "arrived with flowing liquid already settled. A guess, not proof: chunks without liquid stay unmarked, a bucket of "
+                + "water can mark an old chunk new, and pre-generated worlds look old. Clears on disconnect and dimension change.");
+    }
+
+    private void drawStashFinderSettings(GuiGraphics g) {
+        var value = config.stashFinder;
+        var controller = dev.donut.client.stash.StashFinderController.get();
+        section(g, "Stashes", 0);
+        button(g, "m26.list", "Open stash list", rowX, settingsCursor, rowW, s(34), () -> {
+            flush(); minecraft.setScreen(new StashScreen(this, config, save));
+        });
+        settingsCursor += s(44);
+        help(g, controller == null || minecraft.level == null ? "Join a world to log stashes. Each server keeps its own list."
+                : controller.forCurrentServer().size() + " logged on this server. Export writes CSV and JSON to the donut-stashes config folder.");
+        section(g, "Detection", 0);
+        slider(g, "threshold", "Minimum storage", 0, () -> value.threshold, next -> value.threshold = (int) next,
+                dev.donut.client.config.StashFinderSettings.MIN_THRESHOLD, dev.donut.client.config.StashFinderSettings.MAX_THRESHOLD, 1, "");
+        help(g, "A chunk is logged once its weighted storage count reaches this. A double chest counts as two chests.");
+        section(g, "Weights", 0);
+        for (var kind : dev.donut.client.storageesp.StorageKind.values()) {
+            if (!dev.donut.client.config.StashFinderSettings.weighted(kind)) continue;
+            slider(g, "weight-" + kind.id, kind.label, 0, () -> value.weight(kind), next -> value.weights.put(kind.id, (int) next),
+                    0, dev.donut.client.config.StashFinderSettings.MAX_WEIGHT, 1, "");
+        }
+        section(g, "Notices", 0);
+        settingToggle(g, "notify", "Action-bar notice", 0, () -> value.notify, () -> value.notify = !value.notify);
+        settingToggle(g, "toast", "Toast", 0, () -> value.toast, () -> value.toast = !value.toast);
+        button(g, "m26.rescan", "Rescan loaded chunks", rowX, settingsCursor, rowW, s(34), () -> {
+            var current = dev.donut.client.stash.StashFinderController.get();
+            if (current != null) current.rescan();
+        });
+        settingsCursor += s(44);
+        help(g, "Counts storage blocks in chunks you have received, with Storage ESP's block types, whether or not Storage ESP is on. "
+                + "Scans a few chunks per tick. Local only: nothing is sent.");
     }
 
     private void drawStorageEspSettings(GuiGraphics g) {

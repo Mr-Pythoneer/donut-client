@@ -58,7 +58,8 @@ public final class ConfigProfiles {
             Map.entry("autoMiner", "Auto Miner"), Map.entry("waypoints", "Waypoints"),
             Map.entry("freelook", "Freelook"), Map.entry("autoReconnect", "Auto Reconnect"), Map.entry("autoEat", "Auto Eat"),
             Map.entry("amethyst", "Amethyst Scanner"), Map.entry("fullbright", "Fullbright"), Map.entry("fly", "Fly"),
-            Map.entry("progressBar", "Progress Bar"), Map.entry("nameHider", "Name Hider"), Map.entry("hotbar", "Hotbar"));
+            Map.entry("progressBar", "Progress Bar"), Map.entry("nameHider", "Name Hider"), Map.entry("hotbar", "Hotbar"),
+            Map.entry("hudWidgets", "HUD Widgets"), Map.entry("newChunks", "NewChunks"), Map.entry("stashFinder", "Stash Finder"));
 
     /** One parsed profile file. {@code config} is sanitized with every module disabled. */
     public record Profile(ClientConfig config, Map<String, String> keybinds, int format, String exportedAt, String modVersion) { }

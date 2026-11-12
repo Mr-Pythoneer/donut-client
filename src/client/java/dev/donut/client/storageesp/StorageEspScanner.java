@@ -181,6 +181,14 @@ public final class StorageEspScanner {
         LevelChunk chunk = loadedChunk(level, cx, cz);
         scannedChunks++;
         if (chunk == null) { if (index.remove(key) != null) dirty = true; return; }
+        List<Found> found = scanStorage(chunk);
+        List<Found> previous = found.isEmpty() ? index.remove(key) : index.put(key, List.copyOf(found));
+        if (previous != null || !found.isEmpty()) dirty = true;
+    }
+
+    /** Every storage block in a received chunk. Shared with Stash Finder, which counts the same classification. */
+    public static List<Found> scanStorage(LevelChunk chunk) {
+        int cx = chunk.getPos().x, cz = chunk.getPos().z;
         List<Found> found = new ArrayList<>();
         LevelChunkSection[] sections = chunk.getSections();
         for (int i = 0; i < sections.length; i++) {
@@ -195,8 +203,7 @@ public final class StorageEspScanner {
                         if (kind != null) found.add(new Found(new BlockPos((cx << 4) + x, baseY + y, (cz << 4) + z), kind));
                     }
         }
-        List<Found> previous = found.isEmpty() ? index.remove(key) : index.put(key, List.copyOf(found));
-        if (previous != null || !found.isEmpty()) dirty = true;
+        return found;
     }
 
     private void publish(Minecraft client) {

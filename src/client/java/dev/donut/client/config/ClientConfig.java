@@ -20,6 +20,9 @@ public final class ClientConfig {
     public AutoReconnectSettings autoReconnect = new AutoReconnectSettings();
     public AutoEatSettings autoEat = new AutoEatSettings();
     public WaypointSettings waypoints = new WaypointSettings();
+    public HudWidgetsSettings hudWidgets = new HudWidgetsSettings();
+    public NewChunksSettings newChunks = new NewChunksSettings();
+    public StashFinderSettings stashFinder = new StashFinderSettings();
     public AmethystSettings amethyst = new AmethystSettings();
     public FullbrightSettings fullbright = new FullbrightSettings();
     public FlySettings fly = new FlySettings();
@@ -78,6 +81,12 @@ public final class ClientConfig {
         autoEat.sanitize();
         if (waypoints == null) waypoints = new WaypointSettings();
         waypoints.sanitize();
+        if (hudWidgets == null) hudWidgets = new HudWidgetsSettings();
+        hudWidgets.sanitize();
+        if (newChunks == null) newChunks = new NewChunksSettings();
+        newChunks.sanitize();
+        if (stashFinder == null) stashFinder = new StashFinderSettings();
+        stashFinder.sanitize();
         progressBar.sanitize();
         hotbar.sanitize();
         accentColor &= 0xFFFFFF;

@@ -77,6 +77,9 @@ public final class ModuleKeybinds {
         return count;
     }
 
+    /** Same as {@link #exists}; kept for modules that use this name. */
+    public static boolean isModule(int index) { return exists(index); }
+
     /** Zoom's hold-to-zoom key (not a module toggle; the Zoom module's own toggle uses its module slot). */
     private static KeyMapping zoomKey;
     public static void setZoomKey(KeyMapping key) { zoomKey = key; }

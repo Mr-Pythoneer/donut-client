@@ -17,7 +17,7 @@ public final class ModuleArrayList {
     private static final String[] NAMES = {"Freecam", "AutoBuilder", "Base Finder",
             "Fullbright", "Fly", "Progress Bar", "Name Hider", "Hotbar", "Amethyst Scanner", "Light Debug", "Sound Detector", "BlockESP", "Staff Detector", "Storage ESP", "Coordinates", "Waypoints", "Zoom", "Durability Alert", "Auto Miner",
             // Index = module ID - 2. Unused IDs are null and never shown.
-            "Freelook", "Player ESP", "Search", null, null, null, "Auto Reconnect", "Auto Eat"};
+            "Freelook", "Player ESP", "Search", "HUD Widgets", "NewChunks", "Stash Finder", "Auto Reconnect", "Auto Eat"};
     private static final float[] animation = new float[NAMES.length];
     private static long lastFrame;
     private static List<Row> rows = List.of();
@@ -42,16 +42,16 @@ public final class ModuleArrayList {
                 FlyController.getInstance() != null && FlyController.getInstance().isActive(),
                 config.progressBar.enabled, config.nameHider.enabled, config.hotbar.enabled, config.amethyst.enabled, config.lightDebug.enabled, config.soundDetector.enabled, config.blockEsp.enabled, config.staffDetector.enabled, config.storageEsp.enabled, config.coordinates.enabled, config.waypoints.enabled,
                 config.zoom.enabled, config.durabilityAlert.enabled, config.autoMiner.enabled,
-                config.freelook.enabled, config.playerEsp.enabled, config.search.enabled, false, false, false, config.autoReconnect.enabled, config.autoEat.enabled};
+                config.freelook.enabled, config.playerEsp.enabled, config.search.enabled, config.hudWidgets.enabled, config.newChunks.enabled, config.stashFinder.enabled, config.autoReconnect.enabled, config.autoEat.enabled};
         float k = config.clickGuiStyle.animationSpeed == 0 ? 1 : 1 - (float) Math.exp(-12 * dt * config.clickGuiStyle.animationSpeed);
         float previousFontScale = WorkspacePaint.pushScale(s);
         g.pose().pushMatrix();
         try {
             g.pose().scale(1 / guiScale, 1 / guiScale);
             List<Row> ordered = new ArrayList<>();
-            for (int i = 0; i < Math.min(NAMES.length, enabled.length); i++) {
+            for (int i = 0; i < NAMES.length; i++) {
                 if (NAMES[i] == null) continue;
-                float target = enabled[i] ? 1 : 0;
+                float target = i < enabled.length && enabled[i] ? 1 : 0;
                 animation[i] += (target - animation[i]) * k;
                 if (Math.abs(animation[i] - target) < .005f) animation[i] = target;
                 if (animation[i] > 0) ordered.add(new Row(i, NAMES[i], WorkspacePaint.smallWidth(font, NAMES[i]), animation[i]));
@@ -72,6 +72,7 @@ public final class ModuleArrayList {
                     steps.add(new Step(row, right - w + slide, top, right + slide, bottom, Math.min(1, row.animation * 1.5f)));
                 }
             }
+            HudPanel.reserveTopRight(y);
             drawBackground(g, steps, radius, s);
             for (Step step : steps) {
                 float x = Math.round(step.right - HudPanel.PAD_X * s - step.row.nameWidth);

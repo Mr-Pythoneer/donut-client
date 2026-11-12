@@ -44,6 +44,11 @@ public final class ModuleSearchIndex {
         put(27, "Delay", "Max attempts (0 = unlimited)", "Wait longer after each failure", "Don't retry bans and whitelists", "Reconnect");
         put(28, "Eat at or below hunger", "Eat when health is low", "Low health at or below", "Show HUD while eating", "When to eat", "Never eat", "Display");
         for (var food : dev.donut.client.config.AutoEatSettings.FOODS) put(28, food.label());
+        put(24, "Widgets", "Details", "24-hour clock", "In-game day and time", "Memory percentage", "Corner");
+        for (var widget : dev.donut.client.hudwidgets.HudWidget.values()) put(24, widget.label);
+        put(25, "Clear marks", "Show new chunks", "New chunk color", "Show old chunks", "Old chunk color", "Range", "Overlay height (Y)", "Opacity", "Outlines", "Through walls", "Detection", "Display");
+        put(26, "Open stash list", "Minimum storage", "Action-bar notice", "Toast", "Rescan loaded chunks", "Stashes", "Detection", "Weights", "Notices");
+        for (StorageKind kind : StorageKind.values()) if (dev.donut.client.config.StashFinderSettings.weighted(kind)) put(26, kind.label);
         // Labels generated from enums at runtime in the inspector.
         List<String> storage = new ArrayList<>(SETTINGS.getOrDefault(15, List.of()));
         for (StorageKind kind : StorageKind.values()) { storage.add(kind.label); storage.add(kind.label + " color"); }

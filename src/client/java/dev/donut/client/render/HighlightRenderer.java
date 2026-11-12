@@ -234,6 +234,21 @@ public final class HighlightRenderer implements AutoCloseable {
                 if (settings.tracers && tracersLeft-- > 0) lines.add(new DrawLine(Vec3.ZERO, bounds.getCenter().subtract(camera), outline, true));
             }
         }
+        var newChunks = dev.donut.client.newchunks.NewChunksController.get();
+        if (newChunks != null && config.newChunks.enabled && config.newChunks.opacity > 0) {
+            var settings = config.newChunks;
+            int drawn = 0;
+            double fill = settings.opacity / 255.0, edge = Math.min(1, fill * 2.2 + .15);
+            for (var overlay : newChunks.overlay(net.minecraft.core.SectionPos.posToSectionCoord(camera.x),
+                    net.minecraft.core.SectionPos.posToSectionCoord(camera.z))) {
+                if (!context.frustum().isVisible(overlay.bounds())) continue;
+                int rgb = overlay.mark() == dev.donut.client.newchunks.NewChunksTracker.Mark.NEW ? settings.newColor : settings.oldColor;
+                boxes.add(new DrawBox(overlay.bounds().move(-camera.x, -camera.y, -camera.z), argb(rgb, fill),
+                        settings.outlines ? argb(rgb, edge) : 0, 1.5f, settings.throughWalls));
+                drawn++;
+            }
+            dev.donut.client.newchunks.NewChunksController.lastRenderedBoxes = drawn;
+        }
         var waypoints = dev.donut.client.waypoints.WaypointController.get();
         if (waypoints != null && config.waypoints.enabled && config.waypoints.opacity > 0) {
             var settings = config.waypoints;

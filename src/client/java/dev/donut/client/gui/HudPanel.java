@@ -6,6 +6,8 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -16,7 +18,8 @@ import net.minecraft.world.item.ItemStack;
  * {@link #scale(ClientConfig)}.
  */
 public final class HudPanel {
-    public enum Anchor { TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT, BELOW_CROSSHAIR, ABOVE_HOTBAR }
+    /** {@code TOP_RIGHT} stacks below the module list and vanilla's effect icons, so neither is covered. */
+    public enum Anchor { TOP_LEFT, BOTTOM_LEFT, BOTTOM_RIGHT, BELOW_CROSSHAIR, ABOVE_HOTBAR, TOP_RIGHT }
 
     public static final int TITLE = 0xFFF2F4F7, TEXT = 0xFFC7CCD6, MUTED = 0xFF8A919E;
     public static final int WARNING = 0xFFF0B45A, DANGER = 0xFFEF6A5E, GOOD = 0xFF7FCB8E;
@@ -25,11 +28,14 @@ public final class HudPanel {
     static final float PAD_X = 7, PAD_Y = 5, ROW = 14, TEXT_SIZE = 13, SWATCH = 6, ICON = 12, GAP = 12, COLUMN_GAP = 14,
             RADIUS = 4, MARGIN = 8, STACK_GAP = 5;
 
-    private static float topLeft = -1, bottomLeft = -1, bottomRight = -1;
+    private static float topLeft = -1, bottomLeft = -1, bottomRight = -1, topRight = -1;
+    /** Bottom edge (framebuffer pixels) of what already occupies the top-right corner this frame. */
+    private static float topRightFloor;
 
     private final String title, titleValue;
     private final List<Row> rows = new ArrayList<>();
     private final List<Row> footer = new ArrayList<>();
+    private final List<Content> contents = new ArrayList<>();
     private int columns = 1;
     private int accent;
     private double progress = -1;
@@ -45,7 +51,27 @@ public final class HudPanel {
     public static HudPanel of(String title, String titleValue) { return new HudPanel(title, titleValue); }
 
     /** Reset corner stacking. Called once per frame before any Donut panel draws. */
-    public static void newFrame() { topLeft = bottomLeft = bottomRight = -1; }
+    public static void newFrame() {
+        topLeft = bottomLeft = bottomRight = topRight = -1;
+        topRightFloor = vanillaEffectsBottom();
+    }
+
+    /** The module list reports its bottom edge here so {@link Anchor#TOP_RIGHT} panels start below it. */
+    public static void reserveTopRight(float bottom) { topRightFloor = Math.max(topRightFloor, bottom); }
+
+    /** Vanilla draws effect icons in the top-right corner (beneficial row, then harmful row, 24 GUI pixels each). */
+    private static float vanillaEffectsBottom() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.player == null || mc.options.hideGui) return 0;
+        boolean beneficial = false, harmful = false;
+        for (var effect : mc.player.getActiveEffects()) {
+            if (!effect.showIcon()) continue;
+            if (effect.getEffect().value().isBeneficial()) beneficial = true;
+            else harmful = true;
+        }
+        int bottom = harmful ? 51 : beneficial ? 25 : 0;
+        return bottom * (float) mc.getWindow().getGuiScale();
+    }
 
     /** Panel scale: window height relative to 960 pixels times the user's HUD size, independent of GUI scale. */
     public static float scale(ClientConfig config) {
@@ -54,21 +80,29 @@ public final class HudPanel {
         return (float) (Math.round(Math.clamp(window.getHeight() / 960.0 * size, .5, 3.5) * 20) / 20.0);
     }
 
-    public HudPanel row(String label, String value) { return add(new Row(label, value, 0, TEXT, TEXT, null)); }
+    public HudPanel row(String label, String value) { return add(new Row(label, value, 0, TEXT, TEXT, null, null)); }
 
-    public HudPanel row(String label, String value, int valueColor) { return add(new Row(label, value, 0, TEXT, valueColor, null)); }
+    public HudPanel row(String label, String value, int valueColor) { return add(new Row(label, value, 0, TEXT, valueColor, null, null)); }
 
     /** A row with a small colour swatch before the label. */
-    public HudPanel swatch(int rgb, String label, String value) { return add(new Row(label, value, 0xFF000000 | rgb, TEXT, TITLE, null)); }
+    public HudPanel swatch(int rgb, String label, String value) { return add(new Row(label, value, 0xFF000000 | rgb, TEXT, TITLE, null, null)); }
 
-    public HudPanel text(String value, int color) { return add(new Row(value, null, 0, color, color, null)); }
+    public HudPanel text(String value, int color) { return add(new Row(value, null, 0, color, color, null, null)); }
 
-    public HudPanel item(ItemStack stack, String label, String value, int valueColor) { return add(new Row(label, value, 0, TEXT, valueColor, stack)); }
+    public HudPanel item(ItemStack stack, String label, String value, int valueColor) { return add(new Row(label, value, 0, TEXT, valueColor, stack, null)); }
+
+    /** A row led by a GUI sprite (e.g. a mob effect icon) drawn at item-icon size. */
+    public HudPanel sprite(Identifier sprite, String label, String value, int valueColor) { return add(new Row(label, value, 0, TEXT, valueColor, null, sprite)); }
+
+    /** Draws custom content (e.g. key caps) under the rows; it reserves {@code baseW} by {@code baseH} at scale 1. */
+    public interface Painter { void paint(GuiGraphics g, float x, float y, float scale); }
+
+    public HudPanel content(float baseW, float baseH, Painter painter) { contents.add(new Content(baseW, baseH, painter)); return this; }
 
     /** A full-width row under the column grid, separated by a divider. */
-    public HudPanel footer(int rgb, String label, String value) { footer.add(new Row(label, value, rgb == 0 ? 0 : 0xFF000000 | rgb, TEXT, TITLE, null)); return this; }
+    public HudPanel footer(int rgb, String label, String value) { footer.add(new Row(label, value, rgb == 0 ? 0 : 0xFF000000 | rgb, TEXT, TITLE, null, null)); return this; }
 
-    public HudPanel footerText(String value, int color) { footer.add(new Row(value, null, 0, color, color, null)); return this; }
+    public HudPanel footerText(String value, int color) { footer.add(new Row(value, null, 0, color, color, null, null)); return this; }
 
     public HudPanel columns(int count) { columns = Math.max(1, count); return this; }
 
@@ -79,7 +113,7 @@ public final class HudPanel {
 
     public HudPanel opacity(float value) { opacity = Math.clamp(value, 0, 1); return this; }
 
-    public boolean isEmpty() { return title == null && rows.isEmpty() && footer.isEmpty(); }
+    public boolean isEmpty() { return title == null && rows.isEmpty() && footer.isEmpty() && contents.isEmpty(); }
 
     private HudPanel add(Row row) { rows.add(row); return this; }
 
@@ -104,12 +138,12 @@ public final class HudPanel {
                 int c = perColumn == 0 ? 0 : i / perColumn;
                 labelW[c] = Math.max(labelW[c], WorkspacePaint.smallWidth(font, row.label));
                 if (row.value != null) valueW[c] = Math.max(valueW[c], WorkspacePaint.smallWidth(font, row.value));
-                if (row.swatch != 0 || row.icon != null) lead[c] = true;
+                if (row.swatch != 0 || row.icon != null || row.sprite != null) lead[c] = true;
             }
             float contentW = 0;
             float[] columnW = new float[columns];
             for (int c = 0; c < columns; c++) {
-                float leadW = lead[c] ? (rows.stream().anyMatch(r -> r.icon != null) ? ICON + 4 : SWATCH + 5) * s : 0;
+                float leadW = lead[c] ? (hasIcons() ? ICON + 4 : SWATCH + 5) * s : 0;
                 columnW[c] = leadW + labelW[c] + (valueW[c] > 0 ? GAP * s + valueW[c] : 0);
                 contentW += columnW[c] + (c > 0 ? COLUMN_GAP * s : 0);
             }
@@ -123,9 +157,15 @@ public final class HudPanel {
             for (Row row : footer) contentW = Math.max(contentW, (row.swatch != 0 ? (SWATCH + 5) * s : 0) + WorkspacePaint.smallWidth(font, row.label)
                     + (row.value != null ? GAP * s + WorkspacePaint.smallWidth(font, row.value) : 0));
             float progressH = progress >= 0 ? 6 * s : 0;
+            float contentH = 0;
+            for (Content content : contents) {
+                contentW = Math.max(contentW, content.w * s);
+                contentH += content.h * s + 4 * s;
+            }
+            if (contentH > 0 && title == null && rows.isEmpty()) contentH -= 4 * s;
             float w = (float) Math.ceil(contentW + PAD_X * 2 * s + (accent != 0 ? 2 * s : 0));
             w = Math.min(w, windowW - MARGIN * 2 * s);
-            float h = (float) Math.ceil(PAD_Y * 2 * s + titleH + perColumn * ROW * s + footerH + progressH);
+            float h = (float) Math.ceil(PAD_Y * 2 * s + titleH + perColumn * ROW * s + contentH + footerH + progressH);
             float[] at = place(anchor, w, h, s, guiScale, windowW, windowH);
             float x = at[0], y = at[1];
 
@@ -151,25 +191,35 @@ public final class HudPanel {
                     if (i >= rows.size()) break;
                     Row row = rows.get(i);
                     float rowY = cursor + r * ROW * s, textX = columnX;
-                    if (row.icon != null) {
+                    if (row.icon != null || row.sprite != null) {
                         g.pose().pushMatrix();
                         g.pose().translate(textX, rowY + (ROW - ICON) * s / 2);
-                        g.pose().scale(ICON * s / 16, ICON * s / 16);
-                        g.renderItem(row.icon, 0, 0);
+                        if (row.icon != null) {
+                            g.pose().scale(ICON * s / 16, ICON * s / 16);
+                            g.renderItem(row.icon, 0, 0);
+                        } else {
+                            g.pose().scale(ICON * s / 18, ICON * s / 18);
+                            g.blitSprite(RenderPipelines.GUI_TEXTURED, row.sprite, 0, 0, 18, 18, UiPaint.withOpacity(0xFFFFFFFF));
+                        }
                         g.pose().popMatrix();
                         textX += (ICON + 4) * s;
                     } else if (row.swatch != 0) {
                         UiPaint.round(g, textX, rowY + (ROW - SWATCH) * s / 2, SWATCH * s, SWATCH * s, 1.5f * s, row.swatch);
                         textX += (SWATCH + 5) * s;
-                    } else if (lead[c]) textX += (rows.stream().anyMatch(q -> q.icon != null) ? ICON + 4 : SWATCH + 5) * s;
+                    } else if (lead[c]) textX += (hasIcons() ? ICON + 4 : SWATCH + 5) * s;
                     WorkspacePaint.smallText(g, font, row.label, textX, rowY + textInset, row.labelColor);
                     if (row.value != null) WorkspacePaint.smallText(g, font, row.value,
                             columnX + columnW[c] - WorkspacePaint.smallWidth(font, row.value), rowY + textInset, row.valueColor);
                 }
                 columnX += columnW[c] + COLUMN_GAP * s;
             }
+            float contentY = cursor + perColumn * ROW * s + (title != null || !rows.isEmpty() ? 4 * s : 0);
+            for (Content content : contents) {
+                content.painter.paint(g, left, contentY, s);
+                contentY += content.h * s + 4 * s;
+            }
             if (!footer.isEmpty()) {
-                float fy = cursor + perColumn * ROW * s;
+                float fy = cursor + perColumn * ROW * s + contentH;
                 if (!rows.isEmpty()) {
                     g.fill(Math.round(left), Math.round(fy + s), Math.round(x + w - PAD_X * s), Math.round(fy + s) + Math.max(1, Math.round(s * .75f)), UiPaint.withOpacity(DIVIDER));
                     fy += 4 * s;
@@ -234,8 +284,16 @@ public final class HudPanel {
             }
             case BELOW_CROSSHAIR -> new float[] {(windowW - w) / 2, windowH / 2 + 14 * s};
             case ABOVE_HOTBAR -> new float[] {(windowW - w) / 2, Math.min(windowH - 72 * guiScale, hotbarTop - 24 * guiScale) - h};
+            case TOP_RIGHT -> {
+                float y = topRight < 0 ? Math.max(margin, topRightFloor + gap) : topRight;
+                topRight = y + h + gap;
+                yield new float[] {windowW - margin - w, y};
+            }
         };
     }
 
-    private record Row(String label, String value, int swatch, int labelColor, int valueColor, ItemStack icon) { }
+    private boolean hasIcons() { return rows.stream().anyMatch(r -> r.icon != null || r.sprite != null); }
+
+    private record Row(String label, String value, int swatch, int labelColor, int valueColor, ItemStack icon, Identifier sprite) { }
+    private record Content(float w, float h, Painter painter) { }
 }
