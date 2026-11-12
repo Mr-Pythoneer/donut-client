@@ -202,6 +202,38 @@ public final class HighlightRenderer implements AutoCloseable {
                 if (settings.tracers) lines.add(new DrawLine(Vec3.ZERO, bounds.getCenter().subtract(camera), outline, true));
             }
         }
+        var playerEsp = dev.donut.client.playeresp.PlayerEspController.get();
+        if (playerEsp != null && config.playerEsp.enabled) {
+            var settings = config.playerEsp;
+            float partial = context.tickCounter().getGameTimeDeltaPartialTick(false);
+            List<Integer> boxed = new ArrayList<>();
+            if (settings.opacity > 0 && (settings.boxes || settings.tracers)) for (var target : playerEsp.targets()) {
+                var entity = target.entity();
+                if (entity.isRemoved()) continue;
+                AABB bounds = dev.donut.client.playeresp.PlayerEspController.renderBounds(entity, partial);
+                if (bounds.contains(camera)) continue; // Never draw an entity the camera is inside.
+                int rgb = playerEsp.color(target, camera), outline = settings.opacity << 24 | rgb;
+                AABB box = bounds.inflate(.03);
+                if (settings.boxes && context.frustum().isVisible(box)) {
+                    boxes.add(new DrawBox(box.move(-camera.x, -camera.y, -camera.z), argb(rgb, settings.opacity / 255.0 * .1), outline, 2f, true));
+                    boxed.add(entity.getId());
+                }
+                if (settings.tracers) lines.add(new DrawLine(Vec3.ZERO, bounds.getCenter().subtract(camera), outline, true));
+            }
+            playerEsp.recordBoxes(boxed);
+        }
+        var search = dev.donut.client.search.SearchScanner.get();
+        if (search != null && config.search.enabled && config.search.opacity > 0) {
+            var settings = config.search;
+            int tracersLeft = dev.donut.client.search.SearchScanner.MAX_TRACERS;
+            for (var target : search.snapshot().targets()) {
+                int rgb = settings.color(target.id()) & 0xFFFFFF, outline = settings.opacity << 24 | rgb;
+                AABB bounds = target.bounds().inflate(.004);
+                if (context.frustum().isVisible(bounds)) boxes.add(new DrawBox(bounds.move(-camera.x, -camera.y, -camera.z),
+                        argb(rgb, settings.opacity / 255.0 * .12), outline, 1.8f, true));
+                if (settings.tracers && tracersLeft-- > 0) lines.add(new DrawLine(Vec3.ZERO, bounds.getCenter().subtract(camera), outline, true));
+            }
+        }
         var waypoints = dev.donut.client.waypoints.WaypointController.get();
         if (waypoints != null && config.waypoints.enabled && config.waypoints.opacity > 0) {
             var settings = config.waypoints;

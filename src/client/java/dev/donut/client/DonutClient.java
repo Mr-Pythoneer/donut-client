@@ -62,6 +62,8 @@ public final class DonutClient implements ClientModInitializer {
     private dev.donut.client.zoom.ZoomController zoom;
     private dev.donut.client.durability.DurabilityAlertController durabilityAlert;
     private dev.donut.client.automine.AutoMinerController autoMiner;
+    private dev.donut.client.playeresp.PlayerEspController playerEsp;
+    private dev.donut.client.search.SearchScanner search;
 
     @Override
     public void onInitializeClient() {
@@ -78,6 +80,8 @@ public final class DonutClient implements ClientModInitializer {
         soundDetector = new dev.donut.client.sound.SoundDetectorController(config);
         blockEsp = new BlockEspController(config);
         storageEsp = new dev.donut.client.storageesp.StorageEspScanner(config);
+        playerEsp = new dev.donut.client.playeresp.PlayerEspController(config);
+        search = new dev.donut.client.search.SearchScanner(config);
         waypoints = new dev.donut.client.waypoints.WaypointController(config, this::save).chunkFinder(chunkScanner);
         zoom = new dev.donut.client.zoom.ZoomController(config, this::save);
         durabilityAlert = new dev.donut.client.durability.DurabilityAlertController(config);
@@ -123,6 +127,8 @@ public final class DonutClient implements ClientModInitializer {
         KeyMapping zoomToggle = bind("toggle_zoom", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping durability = bind("toggle_durability_alert", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping miner = bind("toggle_auto_miner", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping playerEspKey = bind("toggle_player_esp", InputConstants.UNKNOWN.getValue(), category);
+        KeyMapping searchKey = bind("toggle_search", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping zoomHold = bind("zoom", GLFW.GLFW_KEY_Z, category);
         KeyMapping waypointMenu = bind("waypoints_menu", InputConstants.UNKNOWN.getValue(), category);
         KeyMapping waypointAdd = bind("waypoint_add_here", InputConstants.UNKNOWN.getValue(), category);
@@ -133,6 +139,8 @@ public final class DonutClient implements ClientModInitializer {
         KeyMapping soundHistory = bind("sound_history", InputConstants.UNKNOWN.getValue(), category);
         ModuleKeybinds.initialize(camera, builder, chunks, bright, flight, progress, names, hotbar, amethyst, light, sounds, blocks, staff, storage,
                 coordinates, waypointToggle, zoomToggle, durability, miner);
+        ModuleKeybinds.register(22, playerEspKey);
+        ModuleKeybinds.register(23, searchKey);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ProgressTimers.tick(config);
@@ -234,6 +242,14 @@ public final class DonutClient implements ClientModInitializer {
             }
             zoom.tick(client);
             durabilityAlert.tick(client);
+            if (ModuleKeybinds.consumePress(client, 22) && !inputBlocked && client.screen == null && client.player != null) {
+                config.playerEsp.enabled = !config.playerEsp.enabled; save();
+            }
+            playerEsp.tick(client);
+            if (ModuleKeybinds.consumePress(client, 23) && !inputBlocked && client.screen == null && client.player != null) {
+                config.search.enabled = !config.search.enabled; save();
+            }
+            search.tick(client);
         });
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
@@ -281,7 +297,11 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.gui.StorageEspHud.render(graphics, config, storageEsp));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "staff_detector"), (graphics, delta) ->
                 dev.donut.client.gui.StaffDetectorHud.render(graphics, config, staffDetector));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); });
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "search"), (graphics, delta) ->
+                dev.donut.client.gui.SearchHud.render(graphics, config, search));
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "player_esp_tags"), (graphics, delta) ->
+                dev.donut.client.gui.PlayerEspLabels.render(graphics, config));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { playerEsp.disconnect(); search.disconnect(); staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
             fullbright.close();
@@ -293,6 +313,8 @@ public final class DonutClient implements ClientModInitializer {
             lightDebug.close();
             blockEsp.close();
             storageEsp.clear();
+            playerEsp.clear();
+            search.clear();
             soundDetector.disconnect();
             staffDetector.disconnect();
             renderer.close();

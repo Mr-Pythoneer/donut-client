@@ -13,7 +13,8 @@ import java.util.Set;
 public final class ModuleKeybinds {
     // Preserve the remaining module IDs used by GUI controls.
     public static final int FIRST_MODULE = 2;
-    public static final int MODULE_COUNT = 19;
+    /** Slots for IDs 2..28. Some IDs may have no module (no mapping); every caller must tolerate gaps. */
+    public static final int MODULE_COUNT = 27;
     public static final int MODULE_LIMIT = FIRST_MODULE + MODULE_COUNT;
     private static final KeyMapping[] MODULES = new KeyMapping[MODULE_LIMIT];
     private static final boolean[] pressed = new boolean[MODULE_LIMIT];
@@ -53,7 +54,18 @@ public final class ModuleKeybinds {
         discardNextTick = false;
     }
 
-    public static KeyMapping mapping(int index) { return MODULES[index]; }
+    /** Adds a module slot after {@link #initialize}; used by modules newer than its parameter list. */
+    public static void register(int index, KeyMapping mapping) {
+        if (index < FIRST_MODULE || index >= MODULE_LIMIT) throw new IllegalArgumentException("Module ID out of range: " + index);
+        MODULES[index] = mapping;
+        pressed[index] = false;
+    }
+
+    /** The module's mapping, or null for an ID that has no module. */
+    public static KeyMapping mapping(int index) { return index >= 0 && index < MODULE_LIMIT ? MODULES[index] : null; }
+
+    /** True when a module occupies this ID. */
+    public static boolean exists(int index) { return mapping(index) != null; }
 
     /** Zoom's hold-to-zoom key (not a module toggle; the Zoom module's own toggle uses its module slot). */
     private static KeyMapping zoomKey;
