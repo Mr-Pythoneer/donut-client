@@ -7,6 +7,10 @@
   "mixins": ["donut.gametest.mixins.json"],
   "entrypoints": {
     "fabric-client-gametest": [
+      "dev.donut.client.gametest.FreelookGameTest",
+      "dev.donut.client.gametest.AutoEatGameTest",
+      "dev.donut.client.gametest.AutoReconnectGameTest",
+      "dev.donut.client.gametest.NewToolsGuiGameTest",
       "dev.donut.client.gametest.QualityOfLifeGameTest",
       "dev.donut.client.gametest.QualityOfLifeGuiGameTest",
       "dev.donut.client.gametest.AutoMinerGameTest",
