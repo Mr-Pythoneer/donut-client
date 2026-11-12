@@ -56,6 +56,7 @@ public final class ConfigProfiles {
             Map.entry("playerEsp", "Player ESP"), Map.entry("search", "Search"),
             Map.entry("coordinates", "Coordinates"), Map.entry("zoom", "Zoom"), Map.entry("durabilityAlert", "Durability Alert"),
             Map.entry("autoMiner", "Auto Miner"), Map.entry("waypoints", "Waypoints"),
+            Map.entry("freelook", "Freelook"), Map.entry("autoReconnect", "Auto Reconnect"), Map.entry("autoEat", "Auto Eat"),
             Map.entry("amethyst", "Amethyst Scanner"), Map.entry("fullbright", "Fullbright"), Map.entry("fly", "Fly"),
             Map.entry("progressBar", "Progress Bar"), Map.entry("nameHider", "Name Hider"), Map.entry("hotbar", "Hotbar"));
 

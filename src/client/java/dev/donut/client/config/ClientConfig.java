@@ -16,6 +16,9 @@ public final class ClientConfig {
     public ZoomSettings zoom = new ZoomSettings();
     public DurabilityAlertSettings durabilityAlert = new DurabilityAlertSettings();
     public AutoMinerSettings autoMiner = new AutoMinerSettings();
+    public FreelookSettings freelook = new FreelookSettings();
+    public AutoReconnectSettings autoReconnect = new AutoReconnectSettings();
+    public AutoEatSettings autoEat = new AutoEatSettings();
     public WaypointSettings waypoints = new WaypointSettings();
     public AmethystSettings amethyst = new AmethystSettings();
     public FullbrightSettings fullbright = new FullbrightSettings();
@@ -67,6 +70,12 @@ public final class ClientConfig {
         durabilityAlert.sanitize();
         if (autoMiner == null) autoMiner = new AutoMinerSettings();
         autoMiner.sanitize();
+        if (freelook == null) freelook = new FreelookSettings();
+        freelook.sanitize();
+        if (autoReconnect == null) autoReconnect = new AutoReconnectSettings();
+        autoReconnect.sanitize();
+        if (autoEat == null) autoEat = new AutoEatSettings();
+        autoEat.sanitize();
         if (waypoints == null) waypoints = new WaypointSettings();
         waypoints.sanitize();
         progressBar.sanitize();

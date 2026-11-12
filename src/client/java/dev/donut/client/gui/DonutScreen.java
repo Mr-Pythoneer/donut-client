@@ -330,7 +330,7 @@ public final class DonutScreen extends Screen {
     }
 
     private String moduleCategory(int index) {
-        return index == 3 || index == 6 || index == 20 ? "Blatant" : index >= 7 && index <= 9 ? "Streaming" : "Visual";
+        return index == 3 || index == 6 || index == 20 || index == 28 ? "Blatant" : index >= 7 && index <= 9 ? "Streaming" : "Visual";
     }
 
     private void drawWorkspaceHeader(GuiGraphics g) {
@@ -494,8 +494,8 @@ public final class DonutScreen extends Screen {
         // Module IDs can have gaps (an ID with no module): those never show a tile or count as a result.
         if (!ModuleKeybinds.exists(index)) return false;
         if (enabledOnly && !enabled(index)) return false;
-        if (!searching() && ((tab == 0 && (index == 3 || index == 6 || index == 20 || index >= 7 && index <= 9))
-                || (tab == 3 && index != 3 && index != 6 && index != 20) || (tab == 4 && (index < 7 || index > 9)))) return false;
+        if (!searching() && ((tab == 0 && (index == 3 || index == 6 || index == 20 || index == 28 || index >= 7 && index <= 9))
+                || (tab == 3 && index != 3 && index != 6 && index != 20 && index != 28) || (tab == 4 && (index < 7 || index > 9)))) return false;
         if (!searching() && tab == 1 && !favorite(index)) return false;
         String words = switch (index) {
             case 2 -> "freecam free camera fly perspective spectator scroll speed smooth follow player look at target coordinates";
@@ -515,6 +515,9 @@ public final class DonutScreen extends Screen {
             case 18 -> "zoom spyglass optifine fov magnify scope";
             case 19 -> "durability alert warning armor tool break damage repair low";
             case 20 -> "auto miner autominer mining mine ore ores diamond iron gold emerald debris tunnel pickaxe automation";
+            case 21 -> "freelook free look camera orbit third person perspective alt look around";
+            case 27 -> "auto reconnect autoreconnect rejoin reconnect disconnect kicked server connection lost multiplayer retry";
+            case 28 -> "auto eat autoeat food hunger eat saturation starve health automation";
             case 15 -> "storage esp storageesp chest chests double chest trapped barrel shulker ender hopper dropper dispenser furnace smoker blast brewing crafter pot bookshelf minecart boat container stash";
             case 22 -> "player esp playeresp players entity entities through walls wallhack nametag nametags tracers health armor armour friends mobs animals items";
             case 23 -> "search block search blockfinder block finder find blocks xray x-ray highlight id spawner ancient debris diamond ore portal";
@@ -532,8 +535,11 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawModuleSettings(GuiGraphics g, int index) {
-        if (index == 23) drawSearchSettings(g);
+        if (index == 28) drawAutoEatSettings(g);
+        else if (index == 27) drawAutoReconnectSettings(g);
+        else if (index == 23) drawSearchSettings(g);
         else if (index == 22) drawPlayerEspSettings(g);
+        else if (index == 21) drawFreelookSettings(g);
         else if (index == 20) drawAutoMinerSettings(g);
         else if (index == 19) drawDurabilityAlertSettings(g);
         else if (index == 18) drawZoomSettings(g);
@@ -699,6 +705,9 @@ public final class DonutScreen extends Screen {
             case 18 -> "Hold a key to zoom your view";
             case 19 -> "Warn before tools and armor break";
             case 20 -> "Walk to and mine chosen ores with vanilla controls";
+            case 21 -> "Hold a key to look around your player without turning";
+            case 27 -> "Rejoin the server after a disconnect, with a countdown";
+            case 28 -> "Eat hotbar food when hungry, then switch back";
             case 22 -> "See loaded players through walls, with nametags";
             case 23 -> "Highlight any blocks you choose through walls";
             default -> "Move through your world with vanilla flight";
@@ -745,11 +754,14 @@ public final class DonutScreen extends Screen {
         }
     }
 
-    private boolean enabled(int index) { return index == 23 ? config.search.enabled : index == 22 ? config.playerEsp.enabled : index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
-    private boolean favorite(int index) { return index == 23 ? config.search.favorite : index == 22 ? config.playerEsp.favorite : index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
+    private boolean enabled(int index) { return index == 28 ? config.autoEat.enabled : index == 27 ? config.autoReconnect.enabled : index == 23 ? config.search.enabled : index == 22 ? config.playerEsp.enabled : index == 21 ? config.freelook.enabled : index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
+    private boolean favorite(int index) { return index == 28 ? config.autoEat.favorite : index == 27 ? config.autoReconnect.favorite : index == 23 ? config.search.favorite : index == 22 ? config.playerEsp.favorite : index == 21 ? config.freelook.favorite : index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
     private void toggleFavorite(int index) {
-        if (index == 23) config.search.favorite = !config.search.favorite;
+        if (index == 28) config.autoEat.favorite = !config.autoEat.favorite;
+        else if (index == 27) config.autoReconnect.favorite = !config.autoReconnect.favorite;
+        else if (index == 23) config.search.favorite = !config.search.favorite;
         else if (index == 22) config.playerEsp.favorite = !config.playerEsp.favorite;
+        else if (index == 21) config.freelook.favorite = !config.freelook.favorite;
         else if (index == 20) config.autoMiner.favorite = !config.autoMiner.favorite;
         else if (index == 19) config.durabilityAlert.favorite = !config.durabilityAlert.favorite;
         else if (index == 18) config.zoom.favorite = !config.zoom.favorite;
@@ -772,10 +784,16 @@ public final class DonutScreen extends Screen {
         if (tab == 1) contentProgress = 0;
     }
     private void toggleEnabled(int index) {
-        if (index == 23) {
+        if (index == 28) {
+            change(() -> config.autoEat.enabled = !config.autoEat.enabled);
+        } else if (index == 27) {
+            change(() -> config.autoReconnect.enabled = !config.autoReconnect.enabled);
+        } else if (index == 23) {
             change(() -> config.search.enabled = !config.search.enabled);
         } else if (index == 22) {
             change(() -> config.playerEsp.enabled = !config.playerEsp.enabled);
+        } else if (index == 21) {
+            change(() -> config.freelook.enabled = !config.freelook.enabled);
         } else if (index == 20) {
             change(() -> config.autoMiner.enabled = !config.autoMiner.enabled);
         } else if (index == 19) {
@@ -820,7 +838,7 @@ public final class DonutScreen extends Screen {
         }
     }
     private String name(int index) {
-        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; case 22 -> "Player ESP"; case 23 -> "Search"; default -> "AutoBuilder"; };
+        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; case 21 -> "Freelook"; case 22 -> "Player ESP"; case 23 -> "Search"; case 27 -> "Auto Reconnect"; case 28 -> "Auto Eat"; default -> "AutoBuilder"; };
     }
 
     private void drawHotbarSettings(GuiGraphics g, int ignored) {
@@ -1214,6 +1232,53 @@ public final class DonutScreen extends Screen {
         settingToggle(g, "durabilityOffhand", "Include offhand", 0, () -> value.includeOffhand, () -> value.includeOffhand = !value.includeOffhand);
         settingToggle(g, "durabilitySound", "Local warning chime", 0, () -> value.sound, () -> value.sound = !value.sound);
         help(g, "Checks your held items and armor. The chime plays once per item, only for you.");
+    }
+
+    private void drawFreelookSettings(GuiGraphics g) {
+        var value = config.freelook;
+        section(g, "Camera", 0);
+        settingToggle(g, "freelookToggle", "Toggle instead of hold", 0, () -> value.toggleMode, () -> value.toggleMode = !value.toggleMode);
+        button(g, "m21.perspective", "Perspective: " + value.perspective, rowX, settingsCursor, rowW, s(34),
+                () -> change(() -> value.perspective = dev.donut.client.config.FreelookSettings.next(value.perspective)));
+        settingsCursor += s(44);
+        help(g, "Back and Front switch to third person while you look around, then return to your previous view. Keep current stays in your view, first person included.");
+        settingToggle(g, "freelookInvert", "Invert pitch", 0, () -> value.invertPitch, () -> value.invertPitch = !value.invertPitch);
+        slider(g, "freelookDistance", "Camera distance", 0, () -> value.distance, next -> value.distance = next,
+                dev.donut.client.config.FreelookSettings.MIN_DISTANCE, dev.donut.client.config.FreelookSettings.MAX_DISTANCE, .5, " blocks");
+        section(g, "Your controls", 0);
+        var key = dev.donut.client.freelook.FreelookController.get() == null ? null : dev.donut.client.freelook.FreelookController.get().key();
+        controlHint(g, value.toggleMode ? "Press to look around" : "Hold to look around", key == null ? "Unbound" : keyName(key), 0);
+        help(g, "Camera only: your player keeps facing and walking the same way and nothing is sent. Freecam takes over while it is on; menus pause it. Change the key in Minecraft Controls under Donut Client.");
+    }
+
+    private void drawAutoReconnectSettings(GuiGraphics g) {
+        var value = config.autoReconnect;
+        section(g, "Reconnect", 0);
+        slider(g, "reconnectDelay", "Delay", 0, () -> value.delaySeconds, next -> value.delaySeconds = (int) next,
+                dev.donut.client.config.AutoReconnectSettings.MIN_DELAY, dev.donut.client.config.AutoReconnectSettings.MAX_DELAY, 1, " s");
+        slider(g, "reconnectAttempts", "Max attempts (0 = unlimited)", 0, () -> value.maxAttempts, next -> value.maxAttempts = (int) next,
+                0, dev.donut.client.config.AutoReconnectSettings.MAX_ATTEMPTS, 1, "");
+        settingToggle(g, "reconnectBackoff", "Wait longer after each failure", 0, () -> value.backoff, () -> value.backoff = !value.backoff);
+        settingToggle(g, "reconnectSkipBans", "Don't retry bans and whitelists", 0, () -> value.skipBans, () -> value.skipBans = !value.skipBans);
+        help(g, "Multiplayer only. After a disconnect the screen shows a countdown with a Stop button; leaving that screen stops retrying. It joins the same address through the normal connect screen.");
+    }
+
+    private void drawAutoEatSettings(GuiGraphics g) {
+        var value = config.autoEat;
+        var eater = dev.donut.client.autoeat.AutoEatController.get();
+        if (eater != null && minecraft.player != null && value.enabled) help(g, "Status: " + eater.statusLine());
+        section(g, "When to eat", 0);
+        slider(g, "eatHunger", "Eat at or below hunger", 0, () -> value.hungerThreshold, next -> value.hungerThreshold = (int) next,
+                dev.donut.client.config.AutoEatSettings.MIN_HUNGER, dev.donut.client.config.AutoEatSettings.MAX_HUNGER, 1, "");
+        settingToggle(g, "eatHurt", "Eat when health is low", 0, () -> value.eatWhenHurt, () -> value.eatWhenHurt = !value.eatWhenHurt);
+        if (value.eatWhenHurt) slider(g, "eatHealth", "Low health at or below", 0, () -> value.healthThreshold, next -> value.healthThreshold = (int) next,
+                dev.donut.client.config.AutoEatSettings.MIN_HEALTH, dev.donut.client.config.AutoEatSettings.MAX_HEALTH, 1, " HP");
+        section(g, "Never eat", 0);
+        for (var food : dev.donut.client.config.AutoEatSettings.FOODS)
+            settingToggle(g, "eatBlock-" + food.id(), food.label(), 0, () -> value.isBlocked(food.id()), () -> value.blocked.put(food.id(), !value.isBlocked(food.id())));
+        section(g, "Display", 0);
+        settingToggle(g, "eatHud", "Show HUD while eating", 0, () -> value.showHud, () -> value.showHud = !value.showHud);
+        help(g, "Picks the most filling allowed food in your hotbar (never from the inventory), eats it with normal item use and switches back. Waits in menus, in Creative, while you use another item, and lets Auto Miner finish its target unless hunger is " + dev.donut.client.config.AutoEatSettings.CRITICAL_HUNGER + " or lower.");
     }
 
     private void drawStorageEspSettings(GuiGraphics g) {

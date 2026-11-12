@@ -64,6 +64,9 @@ public final class DonutClient implements ClientModInitializer {
     private dev.donut.client.automine.AutoMinerController autoMiner;
     private dev.donut.client.playeresp.PlayerEspController playerEsp;
     private dev.donut.client.search.SearchScanner search;
+    private dev.donut.client.freelook.FreelookController freelook;
+    private dev.donut.client.autoreconnect.AutoReconnectController autoReconnect;
+    private dev.donut.client.autoeat.AutoEatController autoEat;
 
     @Override
     public void onInitializeClient() {
@@ -87,6 +90,9 @@ public final class DonutClient implements ClientModInitializer {
         durabilityAlert = new dev.donut.client.durability.DurabilityAlertController(config);
         autoMiner = new dev.donut.client.automine.AutoMinerController(config, this::save);
         staffDetector = new dev.donut.client.staff.StaffDetectorController(config, this::save);
+        freelook = new dev.donut.client.freelook.FreelookController(config);
+        autoReconnect = new dev.donut.client.autoreconnect.AutoReconnectController(config);
+        autoEat = new dev.donut.client.autoeat.AutoEatController(config);
         ClientTickEvents.END_CLIENT_TICK.register(auto -> {
             dev.donut.client.spectrebuilder.BuilderPlacement.tick(auto);
             dev.donut.client.spectrebuilder.CreativeBuilder.INSTANCE.tick(auto);
@@ -141,6 +147,10 @@ public final class DonutClient implements ClientModInitializer {
                 coordinates, waypointToggle, zoomToggle, durability, miner);
         ModuleKeybinds.register(22, playerEspKey);
         ModuleKeybinds.register(23, searchKey);
+        ModuleKeybinds.register(21, bind("toggle_freelook", InputConstants.UNKNOWN.getValue(), category));
+        ModuleKeybinds.register(27, bind("toggle_auto_reconnect", InputConstants.UNKNOWN.getValue(), category));
+        ModuleKeybinds.register(28, bind("toggle_auto_eat", InputConstants.UNKNOWN.getValue(), category));
+        freelook.setKey(bind("freelook", GLFW.GLFW_KEY_LEFT_ALT, category));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ProgressTimers.tick(config);
@@ -250,7 +260,20 @@ public final class DonutClient implements ClientModInitializer {
                 config.search.enabled = !config.search.enabled; save();
             }
             search.tick(client);
+            for (int module : new int[] {21, 27, 28}) {
+                if (!ModuleKeybinds.consumePress(client, module) || inputBlocked || client.screen != null || client.player == null) continue;
+                switch (module) {
+                    case 21 -> config.freelook.enabled = !config.freelook.enabled;
+                    case 27 -> config.autoReconnect.enabled = !config.autoReconnect.enabled;
+                    default -> config.autoEat.enabled = !config.autoEat.enabled;
+                }
+                save();
+            }
+            freelook.tick(client);
+            autoEat.tick(client);
         });
+        ScreenEvents.AFTER_INIT.register(autoReconnect::screenInit);
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> autoReconnect.joined(client));
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof TitleScreen) {
@@ -293,6 +316,8 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.gui.DurabilityAlertHud.render(graphics, config, durabilityAlert));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "auto_miner"), (graphics, delta) ->
                 dev.donut.client.gui.AutoMinerHud.render(graphics, config, autoMiner));
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "auto_eat"), (graphics, delta) ->
+                dev.donut.client.gui.AutoEatHud.render(graphics, config, autoEat));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "storage_esp"), (graphics, delta) ->
                 dev.donut.client.gui.StorageEspHud.render(graphics, config, storageEsp));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "staff_detector"), (graphics, delta) ->
@@ -301,7 +326,7 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.gui.SearchHud.render(graphics, config, search));
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "player_esp_tags"), (graphics, delta) ->
                 dev.donut.client.gui.PlayerEspLabels.render(graphics, config));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { playerEsp.disconnect(); search.disconnect(); staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { playerEsp.disconnect(); search.disconnect(); staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); freelook.disconnect(); autoEat.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
             fullbright.close();
@@ -309,6 +334,7 @@ public final class DonutClient implements ClientModInitializer {
             fly.disable();
             autoBuilder.disconnect();
             autoMiner.stop(client, null);
+            freelook.stop(client);
             save();
             lightDebug.close();
             blockEsp.close();

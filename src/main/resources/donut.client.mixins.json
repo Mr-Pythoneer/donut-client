@@ -30,7 +30,10 @@
     "SoundEntityEventAccessor",
     "SoundDetectorLocalMixin",
     "SoundDetectorClientSoundMixin",
-    "AutoMinerInputMixin"
+    "AutoMinerInputMixin",
+    "FreelookCameraMixin",
+    "DisconnectedScreenAccessor",
+    "AutoReconnectConnectMixin"
   ],
   "injectors": {
     "defaultRequire": 1

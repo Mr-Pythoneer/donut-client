@@ -19,7 +19,10 @@ abstract class MouseHandlerMixin {
             // Zoom lowers local mouse sensitivity only; the turn itself is ordinary vanilla look input.
             var zoom = dev.donut.client.zoom.ZoomController.get();
             double scale = zoom == null ? 1 : zoom.sensitivityScale();
-            player.turn(dx * scale, dy * scale);
+            // Freelook turns only its camera; the player keeps its rotation.
+            if (dev.donut.client.freelook.FreelookController.isActive())
+                dev.donut.client.freelook.FreelookController.get().turn(dx * scale, dy * scale);
+            else player.turn(dx * scale, dy * scale);
         }
     }
 

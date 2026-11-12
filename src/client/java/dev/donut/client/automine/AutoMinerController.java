@@ -220,6 +220,8 @@ public final class AutoMinerController {
         if (manualUntil > tick) return "manual control";
         if (player.getHealth() <= config.autoMiner.minHealth) return "low health";
         if (player.isPassenger()) return "riding";
+        // Auto Eat asks for a pause between targets, or at once when hunger is critical.
+        if (dev.donut.client.autoeat.AutoEatController.holdsMiner()) return "Auto Eat is eating";
         if (player.isUsingItem()) return "using an item";
         if (client.gameMode.getPlayerMode().isBlockPlacingRestricted()) return "cannot mine in this game mode";
         if (AutoBuilderController.get().isRunning()) return "AutoBuilder is running";

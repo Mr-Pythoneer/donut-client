@@ -11,7 +11,8 @@ import java.util.Set;
 
 /** The click GUI edits the same mappings exposed in Minecraft's Controls screen. */
 public final class ModuleKeybinds {
-    // Preserve the remaining module IDs used by GUI controls.
+    // Preserve the remaining module IDs used by GUI controls. IDs without a registered mapping are gaps:
+    // every loop over FIRST_MODULE..MODULE_LIMIT must skip an ID whose mapping(id) is null.
     public static final int FIRST_MODULE = 2;
     /** Slots for IDs 2..28. Some IDs may have no module (no mapping); every caller must tolerate gaps. */
     public static final int MODULE_COUNT = 27;
@@ -54,18 +55,27 @@ public final class ModuleKeybinds {
         discardNextTick = false;
     }
 
-    /** Adds a module slot after {@link #initialize}; used by modules newer than its parameter list. */
+    /**
+     * Registers a module's toggle mapping in its slot. Call after {@link #initialize}; later modules use this instead
+     * of growing initialize's parameter list.
+     */
     public static void register(int index, KeyMapping mapping) {
         if (index < FIRST_MODULE || index >= MODULE_LIMIT) throw new IllegalArgumentException("Module ID out of range: " + index);
         MODULES[index] = mapping;
         pressed[index] = false;
     }
 
-    /** The module's mapping, or null for an ID that has no module. */
     public static KeyMapping mapping(int index) { return index >= 0 && index < MODULE_LIMIT ? MODULES[index] : null; }
 
-    /** True when a module occupies this ID. */
+    /** True when a module occupies this ID (IDs between modules may be unused). */
     public static boolean exists(int index) { return mapping(index) != null; }
+
+    /** How many module IDs are actually in use. */
+    public static int registeredCount() {
+        int count = 0;
+        for (int index = FIRST_MODULE; index < MODULE_LIMIT; index++) if (MODULES[index] != null) count++;
+        return count;
+    }
 
     /** Zoom's hold-to-zoom key (not a module toggle; the Zoom module's own toggle uses its module slot). */
     private static KeyMapping zoomKey;
