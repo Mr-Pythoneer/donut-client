@@ -20,7 +20,8 @@ import org.joml.Matrix4f;
  * same projection as {@link WaypointLabels} (including hurt tilt and view bobbing) so tags stay on the entity.
  */
 public final class PlayerEspLabels {
-    private static final float LIFT = 0.45f;
+    /** Above vanilla's own name tag (which sits about 0.5 above the head), so both stay readable. */
+    private static final float LIFT = 0.8f;
     private static final EquipmentSlot[] ARMOR = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
     private PlayerEspLabels() { }

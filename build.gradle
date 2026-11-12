@@ -48,6 +48,7 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
     inputs.property('demoReelOnly', providers.gradleProperty('demoReelOnly').orElse('false'))
     inputs.property('gametestSkip', providers.gradleProperty('gametestSkip').orElse(''))
     inputs.property('autoMinerTestsOnly', providers.gradleProperty('autoMinerTestsOnly').orElse('false'))
+    inputs.property('newToolsBTestsOnly', providers.gradleProperty('newToolsBTestsOnly').orElse('false'))
     doLast {
         // -PgametestSkip=ClassA,ClassB leaves known-broken suites out of an otherwise full run.
         def skip = providers.gradleProperty('gametestSkip').orElse('').get().split(',').findAll { it }
@@ -95,6 +96,18 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
             data.entrypoints['fabric-client-gametest'] = [
                 'dev.donut.client.gametest.QualityOfLifeGameTest',
                 'dev.donut.client.gametest.QualityOfLifeGuiGameTest',
+                'dev.donut.client.gametest.ModuleKeybindGameTest'
+            ]
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        } else
+        if (providers.gradleProperty('newToolsBTestsOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = [
+                'dev.donut.client.gametest.PlayerEspGameTest',
+                'dev.donut.client.gametest.PlayerEspGuiGameTest',
+                'dev.donut.client.gametest.SearchGameTest',
+                'dev.donut.client.gametest.SearchGuiGameTest',
                 'dev.donut.client.gametest.ModuleKeybindGameTest'
             ]
             manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))

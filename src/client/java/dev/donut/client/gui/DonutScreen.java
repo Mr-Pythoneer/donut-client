@@ -1341,7 +1341,7 @@ public final class DonutScreen extends Screen {
                     && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
                 var block = minecraft.level.getBlockState(hit.getBlockPos()).getBlock();
                 String id = dev.donut.client.search.SearchBlocks.id(block);
-                try { entryMessages.put("m23.blockInput", addSearchBlock(id)); }
+                try { entryMessages.put("m23.blockInput", addSearchBlock(id)); dirty = true; flush(); }
                 catch (IllegalArgumentException failure) { entryMessages.put("m23.blockInput", failure.getMessage()); }
             } else entryMessages.put("m23.blockInput", "Look at a block first, then open this menu.");
         });
