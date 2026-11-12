@@ -38,6 +38,8 @@ public final class AutoMinerSettings {
     /** Use a Silk Touch tool from the hotbar when there is one, so the ore block itself drops. */
     public boolean silkDeepslate = true;
     public boolean silkStone = false;
+    /** When Silk Touch isn't used for an ore Fortune multiplies, use the hotbar pickaxe with the most Fortune. */
+    public boolean preferFortune = true;
     /** After each ore, walk over its drops for up to five seconds. */
     public boolean collectDrops = true;
 

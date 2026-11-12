@@ -16,17 +16,25 @@ public enum OreKind {
     EMERALD("emerald", "Emerald ore", true),
     NETHER_QUARTZ("nether-quartz", "Nether quartz ore", false),
     NETHER_GOLD("nether-gold", "Nether gold ore", false),
-    ANCIENT_DEBRIS("ancient-debris", "Ancient debris", true);
+    ANCIENT_DEBRIS("ancient-debris", "Ancient debris", true, false);
 
     public final String id;
     public final String label;
     /** Whether this kind is a target in fresh settings. */
     public final boolean defaultEnabled;
+    /**
+     * Fortune multiplies this ore's drop (and Silk Touch turns it into the ore block). False for ancient debris,
+     * which always drops itself, so the miner has no Fortune or Silk Touch preference for it.
+     */
+    public final boolean fortuneDrops;
 
-    OreKind(String id, String label, boolean defaultEnabled) {
+    OreKind(String id, String label, boolean defaultEnabled) { this(id, label, defaultEnabled, true); }
+
+    OreKind(String id, String label, boolean defaultEnabled, boolean fortuneDrops) {
         this.id = id;
         this.label = label;
         this.defaultEnabled = defaultEnabled;
+        this.fortuneDrops = fortuneDrops;
     }
 
     /** Classifies a received block state; null for anything that is not a supported ore. */

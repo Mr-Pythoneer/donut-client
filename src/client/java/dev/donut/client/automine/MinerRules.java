@@ -23,9 +23,25 @@ public final class MinerRules {
     @FunctionalInterface
     public interface View { BlockState state(BlockPos pos); }
 
-    /** One hotbar slot. {@code usesLeft} is -1 for items without durability (including an empty hand). */
-    public record Tool(int slot, float speed, boolean harvests, int usesLeft, boolean silk) {
+    /**
+     * One hotbar slot. {@code speed} is the item's base destroy speed for the block; {@code efficiency} and
+     * {@code fortune} are enchantment levels (0 when absent). {@code usesLeft} is -1 for items without durability
+     * (including an empty hand).
+     */
+    public record Tool(int slot, float speed, boolean harvests, int usesLeft, boolean silk, int efficiency, int fortune) {
         public Tool(int slot, float speed, boolean harvests, int usesLeft) { this(slot, speed, harvests, usesLeft, false); }
+        public Tool(int slot, float speed, boolean harvests, int usesLeft, boolean silk) { this(slot, speed, harvests, usesLeft, silk, 0, 0); }
+
+        /** The speed the player actually mines at with this tool, Efficiency included (see {@link #effectiveSpeed(float, int)}). */
+        public float effectiveSpeed() { return MinerRules.effectiveSpeed(speed, efficiency); }
+    }
+
+    /**
+     * Vanilla's mining speed with Efficiency: the enchantment adds level squared + 1, but only when the tool's base
+     * speed for the block is above 1 (so Efficiency does nothing on blocks the tool isn't made for).
+     */
+    public static float effectiveSpeed(float base, int efficiency) {
+        return efficiency > 0 && base > 1 ? base + efficiency * efficiency + 1 : base;
     }
 
     /** The next 1x2 tunnel cell to stand in, and the blocks to clear first, in breaking order. */
@@ -111,6 +127,17 @@ public final class MinerRules {
      * back to any other), {@code FALSE} avoids Silk Touch when another usable tool exists, {@code null} doesn't care.
      */
     public static int chooseTool(List<Tool> hotbar, int selected, boolean needsHarvest, boolean protect, int reserve, Boolean silk) {
+        return chooseTool(hotbar, selected, needsHarvest, protect, reserve, silk, false);
+    }
+
+    /**
+     * The full rule, in order: usable tools only (harvests if needed, not protected); then the Silk Touch preference
+     * as above; then, with {@code fortune} and no Silk Touch tool left in the running, the highest Fortune level when
+     * any tool has Fortune; then the fastest effective speed (Efficiency included); ties keep the held slot, then the
+     * first slot.
+     */
+    public static int chooseTool(List<Tool> hotbar, int selected, boolean needsHarvest, boolean protect, int reserve,
+                                 Boolean silk, boolean fortune) {
         List<Tool> usable = new java.util.ArrayList<>();
         for (Tool tool : hotbar) {
             if (protect && tool.usesLeft() >= 0 && tool.usesLeft() <= reserve) continue;
@@ -118,10 +145,14 @@ public final class MinerRules {
             usable.add(tool);
         }
         if (silk != null && usable.stream().anyMatch(tool -> tool.silk() == silk)) usable.removeIf(tool -> tool.silk() != silk);
+        if (fortune && usable.stream().noneMatch(Tool::silk)) {
+            int most = usable.stream().mapToInt(Tool::fortune).max().orElse(0);
+            if (most > 0) usable.removeIf(tool -> tool.fortune() < most);
+        }
         Tool best = null;
         for (Tool tool : usable) {
-            if (best == null || tool.speed() > best.speed()
-                    || tool.speed() == best.speed() && tool.slot() == selected && best.slot() != selected) best = tool;
+            float speed = tool.effectiveSpeed(), bestSpeed = best == null ? 0 : best.effectiveSpeed();
+            if (best == null || speed > bestSpeed || speed == bestSpeed && tool.slot() == selected && best.slot() != selected) best = tool;
         }
         return best == null ? -1 : best.slot();
     }

@@ -197,4 +197,67 @@ class AutoMinerRulesTest {
                 Blocks.GRAVEL, Blocks.SAND, Blocks.END_PORTAL_FRAME})
             assertFalse(MinerRules.breakable(block.defaultBlockState()), block.toString());
     }
+
+    @Test void efficiencyAddsLevelSquaredPlusOneOnlyAboveBaseSpeedOne() {
+        assertEquals(34, MinerRules.effectiveSpeed(8, 5), 1e-6, "Diamond pickaxe with Efficiency V");
+        assertEquals(10, MinerRules.effectiveSpeed(8, 1), 1e-6);
+        assertEquals(8, MinerRules.effectiveSpeed(8, 0), 1e-6);
+        assertEquals(1, MinerRules.effectiveSpeed(1, 5), 1e-6, "Efficiency does nothing on blocks the tool isn't for");
+        assertEquals(34, new MinerRules.Tool(0, 8, true, 100, false, 5, 0).effectiveSpeed(), 1e-6);
+        // The old constructors mean "no enchantments".
+        var plain = new MinerRules.Tool(2, 6, true, 50);
+        assertEquals(0, plain.efficiency());
+        assertEquals(0, plain.fortune());
+        assertFalse(plain.silk());
+    }
+
+    @Test void toolChoiceCountsEfficiency() {
+        var diamond = new MinerRules.Tool(0, 8, true, 1000);
+        var fastIron = new MinerRules.Tool(1, 6, true, 200, false, 5, 0); // 6 + 26 = 32
+        var stoneE1 = new MinerRules.Tool(2, 4, true, 100, false, 1, 0); // 4 + 2 = 6
+        assertEquals(1, MinerRules.chooseTool(List.of(diamond, fastIron, stoneE1), 0, true, true, 8),
+                "Efficiency V iron beats a plain diamond pickaxe");
+        assertEquals(0, MinerRules.chooseTool(List.of(diamond, stoneE1), 2, true, true, 8));
+        var tiedEfficiency = new MinerRules.Tool(3, 7, true, 1000, false, 1, 0); // 7 + 2 = 9
+        var plainNine = new MinerRules.Tool(4, 9, true, 1000);
+        assertEquals(4, MinerRules.chooseTool(List.of(tiedEfficiency, plainNine), 4, true, true, 8), "Equal effective speed keeps the held slot");
+        assertEquals(3, MinerRules.chooseTool(List.of(tiedEfficiency, plainNine), 0, true, true, 8), "Otherwise the first slot");
+        // Efficiency on a tool that can't harvest the block still doesn't qualify it.
+        var shovel = new MinerRules.Tool(5, 1, false, 500, false, 5, 0);
+        assertEquals(0, MinerRules.chooseTool(List.of(shovel, diamond), 5, true, true, 8));
+    }
+
+    @Test void fortuneComesAfterSilkTouchAndBeforeSpeed() {
+        var plain = new MinerRules.Tool(0, 8, true, 1000);
+        var silk = new MinerRules.Tool(1, 8, true, 1000, true, 0, 0);
+        var fortune1 = new MinerRules.Tool(2, 8, true, 1000, false, 5, 1);
+        var fortune3 = new MinerRules.Tool(3, 6, true, 1000, false, 0, 3);
+        var fastest = new MinerRules.Tool(4, 9, true, 1000, false, 5, 0);
+        List<MinerRules.Tool> hotbar = List.of(plain, silk, fortune1, fortune3, fastest);
+        assertEquals(3, MinerRules.chooseTool(hotbar, 0, true, true, 8, false, true), "Most Fortune wins over speed");
+        assertEquals(4, MinerRules.chooseTool(hotbar, 0, true, true, 8, false, false), "Prefer Fortune off: fastest");
+        assertEquals(1, MinerRules.chooseTool(hotbar, 0, true, true, 8, true, true), "Silk Touch wanted and present comes first");
+        assertEquals(3, MinerRules.chooseTool(List.of(plain, fortune1, fortune3, fastest), 0, true, true, 8, true, true),
+                "Silk Touch wanted but missing: the fallback still prefers Fortune");
+        assertEquals(4, MinerRules.chooseTool(hotbar, 0, true, true, 8, null, false), "No preference at all: fastest (ancient debris, tunnel blocks)");
+        assertEquals(4, MinerRules.chooseTool(List.of(plain, fastest), 0, true, true, 8, false, true), "No Fortune tool: fastest");
+        // Same Fortune level: the faster one, then the held slot.
+        var fortune3Fast = new MinerRules.Tool(5, 8, true, 1000, false, 3, 3);
+        assertEquals(5, MinerRules.chooseTool(List.of(fortune3, fortune3Fast), 3, true, true, 8, false, true));
+        var fortune3Twin = new MinerRules.Tool(6, 6, true, 1000, false, 0, 3);
+        assertEquals(6, MinerRules.chooseTool(List.of(fortune3, fortune3Twin), 6, true, true, 8, false, true));
+        // A protected or non-harvesting Fortune tool doesn't count.
+        var wornFortune = new MinerRules.Tool(7, 8, true, 3, false, 0, 3);
+        var woodFortune = new MinerRules.Tool(8, 2, false, 50, false, 0, 3);
+        assertEquals(4, MinerRules.chooseTool(List.of(wornFortune, woodFortune, fastest), 0, true, true, 8, false, true));
+        assertEquals(7, MinerRules.chooseTool(List.of(wornFortune, woodFortune, fastest), 0, true, false, 8, false, true),
+                "Protection off: the worn Fortune pickaxe is usable");
+        // The six-argument overload is the same rule without Fortune.
+        for (Boolean preference : new Boolean[] {true, false, null})
+            assertEquals(MinerRules.chooseTool(hotbar, 0, true, true, 8, preference, false), MinerRules.chooseTool(hotbar, 0, true, true, 8, preference));
+    }
+
+    @Test void fortuneMattersForEveryOreButAncientDebris() {
+        for (OreKind kind : OreKind.values()) assertEquals(kind != OreKind.ANCIENT_DEBRIS, kind.fortuneDrops, kind.id);
+    }
 }

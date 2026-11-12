@@ -67,6 +67,10 @@ class AutoMinerVariantsTest {
         loaded = new ConfigStore(file).load().autoMiner;
         assertTrue(loaded.silkDeepslate && loaded.collectDrops && loaded.stoneVariants && loaded.deepslateVariants);
         assertFalse(loaded.silkStone);
+        assertTrue(loaded.preferFortune, "Prefer Fortune defaults on for older files");
+        Files.writeString(file, "{\"autoMiner\":{\"preferFortune\":false}}");
+        assertFalse(new ConfigStore(file).load().autoMiner.preferFortune);
+        assertTrue(new AutoMinerSettings().preferFortune);
     }
 
     @Test void silkPreferencePicksOrAvoidsSilkTouch() {

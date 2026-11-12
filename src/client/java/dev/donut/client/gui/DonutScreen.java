@@ -1169,7 +1169,8 @@ public final class DonutScreen extends Screen {
         section(g, "Tools", 0);
         settingToggle(g, "minerSilkDeepslate", "Silk Touch for deepslate ores", 0, () -> value.silkDeepslate, () -> value.silkDeepslate = !value.silkDeepslate);
         settingToggle(g, "minerSilkStone", "Silk Touch for stone ores", 0, () -> value.silkStone, () -> value.silkStone = !value.silkStone);
-        help(g, "Uses a Silk Touch pickaxe from your hotbar when there is one, so the ore block itself drops. Otherwise it uses your best other pickaxe.");
+        settingToggle(g, "minerFortune", "Prefer Fortune", 0, () -> value.preferFortune, () -> value.preferFortune = !value.preferFortune);
+        help(g, "Uses a Silk Touch pickaxe from your hotbar when there is one, so the ore block itself drops. Otherwise it prefers the pickaxe with the most Fortune, then the fastest (Efficiency counts). Hotbar only: it never moves items out of your inventory.");
         section(g, "Search", 0);
         slider(g, "minerRange", "Range", 0, () -> value.range, next -> value.range = (int) next, 8, 64, 1, " blocks");
         slider(g, "minerTunnel", "Tunnel limit", 0, () -> value.tunnelLimit, next -> value.tunnelLimit = (int) next, 4, 128, 1, " blocks");

@@ -20,6 +20,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -440,19 +441,25 @@ public final class AutoMinerController {
             ItemStack stack = inventory.getItem(slot);
             int usesLeft = stack.isDamageableItem() ? stack.getMaxDamage() - stack.getDamageValue() : -1;
             boolean harvests = !state.requiresCorrectToolForDrops() || stack.isCorrectToolForDrops(state);
-            hotbar.add(new MinerRules.Tool(slot, stack.getDestroySpeed(state), harvests, usesLeft, silkTouch(stack)));
+            hotbar.add(new MinerRules.Tool(slot, stack.getDestroySpeed(state), harvests, usesLeft, silkTouch(stack),
+                    enchantment(stack, Enchantments.EFFICIENCY), enchantment(stack, Enchantments.FORTUNE)));
         }
         var settings = config.autoMiner;
-        // Ores follow the Silk Touch settings; tunnel blocks have no preference.
-        Boolean silk = OreKind.of(state) == null ? null : settings.wantsSilk(state);
+        // Ores follow the Silk Touch and Fortune settings; tunnel blocks and ancient debris have no preference.
+        OreKind kind = OreKind.of(state);
+        boolean enchantDrops = kind != null && kind.fortuneDrops;
+        Boolean silk = enchantDrops ? settings.wantsSilk(state) : null;
         return MinerRules.chooseTool(hotbar, inventory.getSelectedSlot(), state.requiresCorrectToolForDrops(),
-                settings.protectTools, settings.toolReserve, silk);
+                settings.protectTools, settings.toolReserve, silk, enchantDrops && settings.preferFortune);
     }
 
-    static boolean silkTouch(ItemStack stack) {
-        for (var enchantment : stack.getEnchantments().keySet())
-            if (enchantment.is(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH)) return true;
-        return false;
+    static boolean silkTouch(ItemStack stack) { return enchantment(stack, Enchantments.SILK_TOUCH) > 0; }
+
+    /** The level of one enchantment on a stack, 0 when it isn't there. Hotbar items only; nothing is moved. */
+    static int enchantment(ItemStack stack, net.minecraft.resources.ResourceKey<net.minecraft.world.item.enchantment.Enchantment> key) {
+        for (var entry : stack.getEnchantments().entrySet())
+            if (entry.getKey().is(key)) return entry.getIntValue();
+        return 0;
     }
 
     /** After a break: note items already lying around, then walk over the new drops (the ore's) for a few seconds. */
