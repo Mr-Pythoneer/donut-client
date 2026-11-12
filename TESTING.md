@@ -8,6 +8,12 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-11 (full suite after merging BlockESP confidence, Auto Miner tools/gravel, waypoint/profile polish)
+
+- `build --no-daemon` passed with **263 unit tests**.
+- Full `runClientGameTest -PgametestSkip=SpectreBuilderGuiGameTest,FlyMultiplayerGameTest --no-daemon` passed every remaining suite in a single run (9 min 28 s).
+- `-PdemoReelOnly=true` recorded all 17 guide clips and the 2 min 24 s tour. I checked every clip with a contact sheet. The guide's media in `docs/videos/` comes from `tools/guide-media.sh`.
+
 ## Verified on 2026-11-11 (Auto Miner enchantment-aware tools, gravel and sand)
 
 - `build --no-daemon` passed with **238 unit tests**, 0 failures. New and changed in `AutoMinerRulesTest` / `AutoMinerVariantsTest`:

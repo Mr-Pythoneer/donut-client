@@ -59,8 +59,6 @@ public final class DemoReelGameTest implements FabricClientGameTest {
             mc.options.guiScale().set(2);
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             mc.options.bobView().set(true);
-            // Far enough to see the Zoom tower 145 blocks away.
-            mc.options.renderDistance().set(14);
             mc.resizeDisplay();
             config.showHud = true;
             config.coordinates.enabled = false;
@@ -77,17 +75,26 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         try (var world = context.worldBuilder().adjustSettings(TestingGroundsBuilder::settings).create()) {
             TestServerContext server = world.getServer();
             TestingGroundsBuilder.build(context, server);
+            waitChunks = () -> world.getClientWorld().waitForChunksRender();
             TestingGroundsBuilder.run(server, "gamerule send_command_feedback false", "gamerule show_death_messages false");
             world.getClientWorld().waitForChunksRender();
 
             intro(context, server);
             menu(context);
+            coordinates(context, server);
             storage(context, server);
             waypoints(context, server);
             freecam(context, server);
             zoom(context, server);
             durability(context, server);
             miner(context, server);
+            fullbright(context, server);
+            fly(context, server);
+            privacy(context, server);
+            progressBar(context, server);
+            lightDebug(context, server);
+            staffDetector(context, server);
+            baseFinder(context, server);
         }
         try (var world = context.worldBuilder().setUseConsistentSettings(false).adjustSettings(creator -> {
             creator.setSeed(dev.donut.client.config.BlockEspSettings.DEFAULT_SEED);
@@ -101,6 +108,8 @@ public final class DemoReelGameTest implements FabricClientGameTest {
             context.runOnClient(mc -> {
                 title = subtitle = "";
                 config.autoMiner.enabled = false;
+                config.fullbright.enabled = config.hotbar.enabled = config.nameHider.enabled = config.progressBar.enabled = false;
+                config.lightDebug.enabled = config.staffDetector.enabled = config.chunkFinder.enabled = config.amethyst.enabled = false;
                 if (FreecamController.getInstance() != null) FreecamController.getInstance().setEnabled(false);
             });
         }
@@ -113,7 +122,6 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         TestingGroundsBuilder.run(server, "tp @a 0.5 " + Y + " 2.5 180 4");
         context.waitTicks(10);
         caption("Donut Client", "A client-side Fabric mod for Minecraft 1.21.11");
-        context.runOnClient(mc -> DonutClient.config().coordinates.enabled = true);
         film(context, 70, t -> turnPlayer(context, -0.35f, 0));
         scene("01-intro");
     }
@@ -161,7 +169,7 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         context.waitTicks(10);
         film(context, 80, t -> turnPlayer(context, 0.45f, 0));
         context.runOnClient(mc -> DonutClient.config().storageEsp.enabled = false);
-        scene("03-storage-esp");
+        scene("04-storage-esp");
     }
 
     private void waypoints(ClientGameTestContext context, TestServerContext server) {
@@ -178,7 +186,7 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         context.waitTicks(10);
         caption("Waypoints", "Saved places with beams and name / distance labels, visible through walls");
         film(context, 140, t -> turnPlayer(context, 2.4f, 0));
-        scene("04-waypoints");
+        scene("05-waypoints");
     }
 
     private void freecam(ClientGameTestContext context, TestServerContext server) {
@@ -210,13 +218,14 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         caption("Freecam", "Turning it off snaps the view back to your player");
         context.runOnClient(mc -> { settings.lookAtTarget = false; FreecamController.getInstance().setEnabled(false); });
         film(context, 25, null);
-        scene("05-freecam");
+        scene("06-freecam");
     }
 
     private void zoom(ClientGameTestContext context, TestServerContext server) {
-        // Beside the portal, so the tower 145 blocks north is in clear view.
-        TestingGroundsBuilder.run(server, "tp @a 6.5 " + Y + " -1.5 177.4 -5");
-        context.waitTicks(10);
+        // About 50 blocks from the red tower, well inside the loaded area.
+        TestingGroundsBuilder.run(server, "tp @a 0.5 " + Y + " -96.5 180 -12");
+        context.waitTicks(40);
+        waitChunks.run();
         caption("Zoom", "Hold Z to zoom smoothly; scroll while holding to adjust");
         context.runOnClient(mc -> DonutClient.config().zoom.enabled = true);
         film(context, 15, null);
@@ -227,7 +236,7 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         context.getInput().releaseKey(ModuleKeybinds.zoomKey());
         film(context, 20, null);
         context.runOnClient(mc -> DonutClient.config().zoom.enabled = false);
-        scene("06-zoom");
+        scene("07-zoom");
     }
 
     private void durability(ClientGameTestContext context, TestServerContext server) {
@@ -238,7 +247,7 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         context.runOnClient(mc -> DonutClient.config().durabilityAlert.enabled = true);
         film(context, 60, null);
         context.runOnClient(mc -> DonutClient.config().durabilityAlert.enabled = false);
-        scene("07-durability");
+        scene("08-durability-alert");
     }
 
     private void miner(ClientGameTestContext context, TestServerContext server) {
@@ -266,7 +275,7 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         });
         context.runOnClient(mc -> DonutClient.config().autoMiner.enabled = false);
         film(context, 10, null);
-        scene("08-auto-miner");
+        scene("09-auto-miner");
     }
 
     private void predictor(ClientGameTestContext context, TestServerContext server) {
@@ -299,7 +308,123 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         caption("Client-side only", "Everything reads data your game already has. No extra packets, no teleports.");
         film(context, 70, t -> turnPlayer(context, 0.9f, 0));
         context.runOnClient(mc -> { config.blockEsp.enabled = false; config.coordinates.enabled = false; });
-        scene("09-predictor");
+        scene("16-blockesp-predictor");
+    }
+
+    private void coordinates(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "tp @a 0.5 " + Y + " 2.5 180 4");
+        context.waitTicks(10);
+        caption("Coordinates", "Position, facing, chunk and the matching Nether coordinates");
+        context.runOnClient(mc -> config.coordinates.enabled = true);
+        film(context, 60, t -> turnPlayer(context, 1.5f, 0));
+        caption("Coordinates", "Top-left or bottom-right; hides with F3 and F1");
+        context.runOnClient(mc -> config.coordinates.anchor = "Bottom right");
+        film(context, 40, t -> turnPlayer(context, 1.5f, 0));
+        context.runOnClient(mc -> config.coordinates.anchor = "Top left");
+        scene("03-coordinates");
+    }
+
+    private void fullbright(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "gamemode creative @a", "time set midnight", "tp @a -14.5 " + Y + " 7.5 90 8");
+        context.waitTicks(20);
+        caption("Fullbright", "Midnight, before...");
+        film(context, 40, t -> turnPlayer(context, 0.4f, 0));
+        context.runOnClient(mc -> config.fullbright.enabled = true);
+        caption("Fullbright", "...and after: everything lit, locally, with no light blocks placed");
+        film(context, 60, t -> turnPlayer(context, 0.4f, 0));
+        context.runOnClient(mc -> config.fullbright.enabled = false);
+        TestingGroundsBuilder.run(server, "time set noon");
+        scene("10-fullbright");
+    }
+
+    private void fly(ClientGameTestContext context, TestServerContext server) {
+        TestingGroundsBuilder.run(server, "gamemode survival @a", "tp @a 0.5 " + Y + " 8.5 0 -10");
+        context.waitTicks(15);
+        caption("Fly", "Vanilla creative-style flight, for singleplayer and LAN worlds");
+        context.runOnClient(mc -> dev.donut.client.fly.FlyController.getInstance().setEnabled(true));
+        film(context, 10, null);
+        context.getInput().holdKey(options -> options.keyJump);
+        film(context, 30, null);
+        context.getInput().releaseKey(options -> options.keyJump);
+        context.getInput().holdKey(options -> options.keyUp);
+        film(context, 50, t -> turnPlayer(context, 0.6f, 0.2f));
+        context.getInput().releaseKey(options -> options.keyUp);
+        context.runOnClient(mc -> dev.donut.client.fly.FlyController.getInstance().setEnabled(false));
+        film(context, 30, null);
+        TestingGroundsBuilder.run(server, "gamemode creative @a");
+        scene("11-fly");
+    }
+
+    private void privacy(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "gamemode survival @a", "tp @a 0.5 " + Y + " 2.5 180 4",
+                "scoreboard objectives add demo dummy \"Server stats\"", "scoreboard objectives setdisplay sidebar demo",
+                "scoreboard players set @a demo 42", "scoreboard players set Coins demo 1250");
+        context.waitTicks(15);
+        caption("Hotbar and Name Hider", "Streaming privacy: your sidebar name and hotbar, as they look normally");
+        film(context, 40, null);
+        context.runOnClient(mc -> { config.hotbar.enabled = true; config.hotbar.blurPercent = 90; });
+        caption("Hotbar privacy", "Blurs the hotbar so viewers can't read your items");
+        film(context, 45, null);
+        context.runOnClient(mc -> config.nameHider.enabled = true);
+        caption("Name Hider", "Hides your username in the sidebar scoreboard");
+        film(context, 45, null);
+        context.runOnClient(mc -> { config.hotbar.enabled = false; config.nameHider.enabled = false; });
+        TestingGroundsBuilder.run(server, "scoreboard objectives remove demo", "gamemode creative @a");
+        scene("12-hotbar-and-name-hider");
+    }
+
+    private void progressBar(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "tp @a 0.5 " + Y + " 2.5 180 4");
+        context.waitTicks(10);
+        caption("Progress Bar", "A streaming overlay with three manual milestones and a base counter");
+        context.runOnClient(mc -> { config.progressBar.enabled = true; config.progressBar.completedStages = 1; config.progressBar.basesFound = 3; });
+        film(context, 40, null);
+        context.runOnClient(mc -> config.progressBar.completedStages = 2);
+        film(context, 40, null);
+        context.runOnClient(mc -> { config.progressBar.enabled = false; config.progressBar.completedStages = 0; config.progressBar.basesFound = 0; });
+        scene("13-progress-bar");
+    }
+
+    private void lightDebug(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        // Torches in a buried pocket under the hub: artificial light underground.
+        TestingGroundsBuilder.run(server, "fill 6 " + (Y - 4) + " -6 10 " + (Y - 2) + " -2 minecraft:air",
+                "setblock 8 " + (Y - 4) + " -4 minecraft:torch", "setblock 6 " + (Y - 4) + " -6 minecraft:torch",
+                "tp @a 0.5 " + Y + " 2.5 215 35");
+        context.waitTicks(15);
+        caption("Light Debug", "Highlights artificial light underground, like torches in a hidden room");
+        context.runOnClient(mc -> config.lightDebug.enabled = true);
+        film(context, 80, t -> turnPlayer(context, t < 40 ? 0.3f : -0.3f, 0));
+        context.runOnClient(mc -> config.lightDebug.enabled = false);
+        scene("14-light-debug");
+    }
+
+    private void staffDetector(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "tp @a 0.5 " + Y + " 2.5 180 4");
+        context.waitTicks(10);
+        caption("Staff Detector", "Reports observed staff presence, and is honest when nothing is known");
+        context.runOnClient(mc -> config.staffDetector.enabled = true);
+        film(context, 60, t -> turnPlayer(context, 0.5f, 0));
+        context.runOnClient(mc -> config.staffDetector.enabled = false);
+        scene("15-staff-detector");
+    }
+
+    private void baseFinder(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "gamemode creative @a", "tp @a 22.5 " + (Y + 2) + " -14.5 20 22");
+        context.waitTicks(15);
+        caption("Base Finder", "Outlines containers, machines and other signs of players in loaded chunks");
+        context.runOnClient(mc -> config.chunkFinder.enabled = true);
+        film(context, 60, t -> turnPlayer(context, -0.5f, 0));
+        caption("Base Finder", "Look at a group to inspect it: item icons, counts and categories");
+        film(context, 60, t -> turnPlayer(context, 0.5f, 0));
+        context.runOnClient(mc -> config.chunkFinder.enabled = false);
+        scene("17-base-finder");
     }
 
     // ---------------------------------------------------------------- capture
