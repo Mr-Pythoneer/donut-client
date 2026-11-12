@@ -109,6 +109,8 @@ public final class DonutClient implements ClientModInitializer {
                 dev.donut.client.killswitch.KillSwitch.defaultFile(), System.currentTimeMillis());
         // Registered before every module's tick, so an expired build never runs a module for even one tick.
         ClientTickEvents.START_CLIENT_TICK.register(this::enforceKillSwitch);
+        // Also before every module tick: Blatant modules stop on servers the user has not allowed.
+        ClientTickEvents.START_CLIENT_TICK.register(this::enforceBlatantGuard);
         ClientTickEvents.END_CLIENT_TICK.register(auto -> {
             dev.donut.client.spectrebuilder.BuilderPlacement.tick(auto);
             dev.donut.client.spectrebuilder.CreativeBuilder.INSTANCE.tick(auto);
@@ -200,7 +202,10 @@ public final class DonutClient implements ClientModInitializer {
                 }
             }
             if (ModuleKeybinds.consumePress(client, 6)) {
-                if (!inputBlocked && client.screen == null && client.player != null) fly.setEnabled(!fly.isActive());
+                if (!inputBlocked && client.screen == null && client.player != null) {
+                    if (fly.isActive()) fly.setEnabled(false);
+                    else if (!guardRefuses(client, "Fly")) fly.setEnabled(true);
+                }
             }
             if (ModuleKeybinds.consumePress(client, 7)) {
                 if (!inputBlocked && client.screen == null && client.player != null) {
@@ -270,7 +275,7 @@ public final class DonutClient implements ClientModInitializer {
                         : "Waypoint added: " + added.name + " (" + added.x + ", " + added.y + ", " + added.z + ")"), true);
             }
             if (ModuleKeybinds.consumePress(client, 20) && !inputBlocked && client.screen == null && client.player != null) {
-                config.autoMiner.enabled = !config.autoMiner.enabled; save();
+                if (config.autoMiner.enabled || !guardRefuses(client, "Auto Miner")) { config.autoMiner.enabled = !config.autoMiner.enabled; save(); }
             }
             zoom.tick(client);
             durabilityAlert.tick(client);
@@ -287,7 +292,7 @@ public final class DonutClient implements ClientModInitializer {
                 switch (module) {
                     case 21 -> config.freelook.enabled = !config.freelook.enabled;
                     case 27 -> config.autoReconnect.enabled = !config.autoReconnect.enabled;
-                    default -> config.autoEat.enabled = !config.autoEat.enabled;
+                    default -> { if (config.autoEat.enabled || !guardRefuses(client, "Auto Eat")) config.autoEat.enabled = !config.autoEat.enabled; }
                 }
                 save();
             }
@@ -391,6 +396,32 @@ public final class DonutClient implements ClientModInitializer {
     }
 
     private void save() { store.save(config); }
+
+    /** Stops the Blatant modules where they are not allowed (see BlatantGuard), saying which one and why. */
+    private void enforceBlatantGuard(net.minecraft.client.Minecraft client) {
+        var place = dev.donut.client.guard.BlatantGuard.current(client);
+        if (dev.donut.client.guard.BlatantGuard.allowed(config.blatantGuard, place)) return;
+        String stopped = null;
+        FlyController fly = FlyController.getInstance();
+        if (fly != null && fly.isActive()) { fly.setEnabled(false); stopped = "Fly"; }
+        if (config.autoMiner.enabled) { config.autoMiner.enabled = false; stopped = "Auto Miner"; }
+        if (config.autoEat.enabled) { config.autoEat.enabled = false; stopped = "Auto Eat"; }
+        AutoBuilderController builder = AutoBuilderController.get();
+        if (builder != null && builder.isRunning()) { builder.block(dev.donut.client.guard.BlatantGuard.blockedMessage("AutoBuilder", place)); stopped = "AutoBuilder"; }
+        if (stopped == null) return;
+        save();
+        if (client.player != null)
+            client.player.displayClientMessage(Component.literal(dev.donut.client.guard.BlatantGuard.blockedMessage(stopped, place)), true);
+    }
+
+    /** For a shortcut that would switch a Blatant module on: true (with a local notice) when the guard says no. */
+    private boolean guardRefuses(net.minecraft.client.Minecraft client, String module) {
+        var place = dev.donut.client.guard.BlatantGuard.current(client);
+        if (dev.donut.client.guard.BlatantGuard.allowed(config.blatantGuard, place)) return false;
+        if (client.player != null)
+            client.player.displayClientMessage(Component.literal(dev.donut.client.guard.BlatantGuard.blockedMessage(module, place)), true);
+        return true;
+    }
 
     private void enforceKillSwitch(net.minecraft.client.Minecraft client) {
         if (!expired()) return;

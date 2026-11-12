@@ -32,13 +32,18 @@ How Donut Client fared on a local test server running several anti-cheats at onc
 | **Freecam,** flying the camera for 5 s | Nothing; alh's freecam score stayed **0** | The body doesn't move, and no packets change. |
 | **Staff Detector** for 20 s | Nothing | Its `/msg` tab-complete requests weren't flagged. |
 | **Auto Eat** | GrimAC **Post** (x2) | Grim saw a packet sent out of the normal order within a tick (the slot switch or eating). Below Grim's punish level. |
-| **Auto Miner,** 8 exposed ores | **Spartan:** impossible-actions/breaking (x4) and exploits/**baritone** (x1); Spartan's ore log recorded every ore | Mined 6 of 8. Spartan noticed blocks being broken *through* another block, and recognised the bot-like walking pattern. Grim, Intave and Omni were silent. |
+| **Auto Miner,** 8 exposed ores | **Spartan:** impossible-actions/breaking (x4) and exploits/**baritone** (x1); Spartan's ore log recorded every ore | Mined all 6 ores it targets. The other 2 were redstone and lapis, which are off by default. Spartan noticed blocks being broken *through* another block, and recognised the bot-like walking pattern. Grim, Intave and Omni were silent. |
 | **AutoBuilder,** a 5x2 cobblestone wall | **GrimAC AimModulo360** (x5), **Omni** packet flood (31 movement packets over its cap) | Built all 10 blocks. Grim saw head turns of 360° or more; Omni saw too many movement packets at once. |
 | **Search** for diamonds, underground | Nothing | **Useless under anti-xray:** it showed about 63,000 "diamonds" within 64 blocks, and 0 of the 40 nearest were real. They're Paper's fake ores. |
 | **BlockESP** seed prediction, underground | Nothing | **Unaffected by anti-xray:** all 40 of the 40 nearest predicted diamonds were real. Mining them would still show up in ore-ratio logs like Spartan's. |
 | **NewChunks** | Nothing | **Doesn't work on this server:** a never-visited area produced 0 "new" marks (82 to 97 "old"). Paper/Purpur don't send the signal it looks for. |
 | **Fly** | **Omni** kick in about 2 s (BadPackets); **GrimAC** Simulation and BadPacketsI; **Intave** "invalid packets" then **ban** within 4 s (pass 1); Spartan | **Caught by every serious anti-cheat almost immediately.** Don't use it on a protected server. |
 | **Auto Reconnect** after a console `/kick` | Nothing | **Worked on a real server:** the countdown ran, and it rejoined by itself. |
+
+**Pass 4** (after the AutoBuilder step fix and the multiplayer guard; the probe allowlists only its own test server):
+- **AutoBuilder** built the full 5x3 wall (15 of 15), with 3 temporary steps. Grim flagged AimModulo360 (x6) again; Omni didn't flag it this time.
+- **BlockESP:** 39 of 40 predicted diamonds were real.
+- **Everything else** matched pass 3. Spartan's baseline noise didn't appear this time, so it varies from run to run.
 
 **Never flagged anything in any pass:** DonutAntiCheat and BS-AntiCheat, even during Fly; and alhAntiCheat, whose freecam score stayed 0.
 

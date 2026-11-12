@@ -74,6 +74,8 @@ public final class AntiCheatProbeGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         context.getInput().resizeWindow(1280, 800);
         try { Files.writeString(REPORT, "time\tscenario\tsetbacks\tkicked\tdetail\n"); } catch (IOException error) { throw new RuntimeException(error); }
+        // The Blatant scenarios are the point of the probe: allow them on this (local, offline) test server only.
+        context.runOnClient(client -> DonutClient.config().blatantGuard.allow(ADDRESS, true));
         connect(context);
         name = context.computeOnClient(client -> client.getUser().getName());
         LOGGER.info("Probe player is {}", name);
@@ -97,6 +99,7 @@ public final class AntiCheatProbeGameTest implements FabricClientGameTest {
         scenario(context, "auto-reconnect", this::autoReconnect);
 
         console("say [probe] done");
+        context.runOnClient(client -> DonutClient.config().blatantGuard.allow(ADDRESS, false));
         context.runOnClient(client -> { if (client.getConnection() != null) client.getConnection().getConnection().disconnect(Component.literal("Probe finished")); });
         context.waitTicks(20);
         context.setScreen(TitleScreen::new);
@@ -214,13 +217,14 @@ public final class AntiCheatProbeGameTest implements FabricClientGameTest {
             settings.range = 24;
             settings.enabled = true;
         });
-        until(context, client -> miner.mined() >= ores.length || !settings.enabled, 2400);
+        int wanted = context.computeOnClient(client -> (int) placed.stream().filter(pos -> settings.wants(client.level.getBlockState(pos))).count());
+        until(context, client -> miner.mined() >= wanted || !settings.enabled, 2400);
         int mined = context.computeOnClient(client -> miner.mined());
         String state = context.computeOnClient(client -> miner.state() + (miner.pauseReason().isEmpty() ? "" : " (" + miner.pauseReason() + ")"));
         context.runOnClient(client -> settings.enabled = false);
         int left = 0;
         for (BlockPos pos : placed) if (!context.computeOnClient(client -> client.level.getBlockState(pos).isAir())) left++;
-        return "mined " + mined + "/" + ores.length + " exposed ores, " + left + " still standing, ended " + state;
+        return "mined " + mined + " of the " + wanted + " ores it targets (" + (ores.length - wanted) + " off by default), " + left + " still standing, ended " + state;
     }
 
     private String autoBuilder(ClientGameTestContext context) {
@@ -229,9 +233,9 @@ public final class AntiCheatProbeGameTest implements FabricClientGameTest {
         context.waitTicks(10);
         AutoBuilderController builder = AutoBuilderController.get();
         List<Schematic.Block> blocks = new ArrayList<>();
-        for (int x = 0; x < 5; x++) for (int y = 0; y < 2; y++) blocks.add(new Schematic.Block(new BlockPos(x, y, 0), Blocks.COBBLESTONE.defaultBlockState(), null));
+        for (int x = 0; x < 5; x++) for (int y = 0; y < 3; y++) blocks.add(new Schematic.Block(new BlockPos(x, y, 0), Blocks.COBBLESTONE.defaultBlockState(), null));
         context.runOnClient(client -> {
-            builder.setSchematic(new Schematic("probe wall", blocks, new BlockPos(5, 2, 1), 1, List.of()));
+            builder.setSchematic(new Schematic("probe wall", blocks, new BlockPos(5, 3, 1), 1, List.of()));
             builder.setTransform(new PlacementTransform(new BlockPos(AX - 2, AY, AZ - 4), 0, false));
             builder.start();
         });

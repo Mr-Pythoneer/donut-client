@@ -2,6 +2,8 @@
 
 **Anti-cheat results:** see [docs/anticheat-results.md](docs/anticheat-results.md) for which modules Grim, Intave, Spartan and others flagged on a local test server.
 
+**Blatant tools stay off on servers you haven't allowed.** Fly, Auto Miner, AutoBuilder and Auto Eat always run in single-player. On a server, allow it first from any of their settings. Every module also shows its anti-cheat test result. See [the guide](docs/GUIDE.md#where-blatant-tools-may-run).
+
 **Test builds expire:** 72 hours after a build first runs on a computer, every module switches off for good. Install a newer build to get a fresh 3 days. See [the guide](docs/GUIDE.md#test-builds-expire-after-3-days).
 
 **New here? Start with the [full guide](docs/GUIDE.md):** every tool explained, with a short video clip of each one and a [full video tour](docs/videos/donut-client-demo.mp4).

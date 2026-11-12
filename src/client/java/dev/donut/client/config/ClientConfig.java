@@ -29,6 +29,7 @@ public final class ClientConfig {
     public ProgressBarSettings progressBar = new ProgressBarSettings();
     public NameHiderSettings nameHider = new NameHiderSettings();
     public HotbarSettings hotbar = new HotbarSettings();
+    public BlatantGuardSettings blatantGuard = new BlatantGuardSettings();
     public int accentColor = 0x56DCCB;
     public ClickGuiStyle clickGuiStyle = new ClickGuiStyle();
     public boolean clickGuiParticles = false;
@@ -47,6 +48,8 @@ public final class ClientConfig {
         if (progressBar == null) progressBar = new ProgressBarSettings();
         if (nameHider == null) nameHider = new NameHiderSettings();
         if (hotbar == null) hotbar = new HotbarSettings();
+        if (blatantGuard == null) blatantGuard = new BlatantGuardSettings();
+        blatantGuard.sanitize();
         freecam.sanitize();
         autoBuilder.sanitize();
         chunkFinder.sanitize();

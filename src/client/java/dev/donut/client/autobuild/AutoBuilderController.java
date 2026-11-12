@@ -145,8 +145,15 @@ public final class AutoBuilderController {
         if (client.gameMode.isSpectator()) { reason="Spectator mode cannot place blocks."; return false; }
         if (client.player.isPassenger()) { reason="Leave the vehicle before starting AutoBuilder."; return false; }
         if (client.screen != null) { reason="Close the open menu before resuming."; return false; }
+        var config=dev.donut.client.DonutClient.config();
+        var place=dev.donut.client.guard.BlatantGuard.current(client);
+        if (config!=null && !dev.donut.client.guard.BlatantGuard.allowed(config.blatantGuard,place)) {
+            reason=dev.donut.client.guard.BlatantGuard.blockedMessage("AutoBuilder",place); return false;
+        }
         return true;
     }
+    /** Pauses a running build because the multiplayer guard stopped it (see BlatantGuard). */
+    public void block(String message) { pauseWith(message); }
     public void cancel() {
         if (creative.running()) creative.stop();
         spectreExecution=false;
@@ -493,18 +500,30 @@ public final class AutoBuilderController {
         // Taller access routes remain bounded and must use existing stairs or scaffold terraces.
         for (Direction direction:Direction.Plane.HORIZONTAL) {
             BlockPos step=target.pos.below(2).relative(direction);
+            // Only a step someone can stand on counts: a wall block with more wall on top of it is not one.
             if (MaterialTracker.isLoaded(client.level,step)
-                    && client.level.getBlockState(step).isCollisionShapeFullBlock(client.level,step)) return null;
+                    && client.level.getBlockState(step).isCollisionShapeFullBlock(client.level,step)
+                    && standingRoom(client,step.above())) return null;
         }
         for (Direction direction:Direction.Plane.HORIZONTAL) {
             BlockPos step=target.pos.below(2).relative(direction);
             if (indices.containsKey(step) || !MaterialTracker.isLoaded(client.level,step)
                     || !client.level.getBlockState(step).canBeReplaced()
-                    || !client.level.getBlockState(step.below()).isCollisionShapeFullBlock(client.level,step.below())) continue;
+                    || !client.level.getBlockState(step.below()).isCollisionShapeFullBlock(client.level,step.below())
+                    || !standingRoom(client,step.above())) continue;
             double candidate=client.player.position().distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(step));
             if (candidate<distance) { distance=candidate; nearest=new Target(step,item.getBlock().defaultBlockState(),-1,true); }
         }
         return nearest;
+    }
+
+    /** True when feet at {@code feet} and the head above have nothing solid and no schematic block is due there. */
+    private boolean standingRoom(Minecraft client,BlockPos feet) {
+        for (BlockPos cell:List.of(feet,feet.above())) {
+            if (!MaterialTracker.isLoaded(client.level,cell) || indices.containsKey(cell)) return false;
+            if (!client.level.getBlockState(cell).getCollisionShape(client.level,cell).isEmpty()) return false;
+        }
+        return true;
     }
 
     /** Creative inventory packets preserve occupied slots and respect each item's stack limit. */

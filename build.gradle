@@ -47,6 +47,9 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
     inputs.property('testingGroundsOnly', providers.gradleProperty('testingGroundsOnly').orElse('false'))
     inputs.property('uiPreviewOnly', providers.gradleProperty('uiPreviewOnly').orElse('false'))
     inputs.property('demoReelOnly', providers.gradleProperty('demoReelOnly').orElse('false'))
+    inputs.property('gametestOnly', providers.gradleProperty('gametestOnly').orElse(''))
+    inputs.property('guardTestsOnly', providers.gradleProperty('guardTestsOnly').orElse('false'))
+    inputs.property('guardServerTestsOnly', providers.gradleProperty('guardServerTestsOnly').orElse('false'))
     inputs.property('killSwitchTestsOnly', providers.gradleProperty('killSwitchTestsOnly').orElse('false'))
     inputs.property('antiCheatProbeOnly', providers.gradleProperty('antiCheatProbeOnly').orElse('false'))
     inputs.property('gametestSkip', providers.gradleProperty('gametestSkip').orElse(''))
@@ -61,6 +64,27 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
             def data = new groovy.json.JsonSlurper().parse(manifest)
             data.entrypoints['fabric-client-gametest'] = data.entrypoints['fabric-client-gametest'].findAll { entry ->
                 !skip.any { entry.endsWith('.' + it) } }
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        }
+        // -PgametestOnly=ClassA,ClassB runs just those suites (simple class names).
+        def only = providers.gradleProperty('gametestOnly').orElse('').get().split(',').findAll { it }
+        if (!only.isEmpty()) {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = only.collect { 'dev.donut.client.gametest.' + it }
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        }
+        if (providers.gradleProperty('guardTestsOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = ['dev.donut.client.gametest.BlatantGuardGameTest']
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        }
+        // Needs tools/anticheat-server.sh running; not part of the default suite.
+        if (providers.gradleProperty('guardServerTestsOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = ['dev.donut.client.gametest.BlatantGuardServerGameTest']
             manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
         }
         if (providers.gradleProperty('killSwitchTestsOnly').orElse('false').get() == 'true') {
@@ -241,6 +265,7 @@ jar { from('LICENSE') { rename { "${it}_${project.base.archivesName.get()}" } } 
 // network synchronizer cannot follow; and the kill-switch clock lives in the run directory, not in ~/.donut-client.
 tasks.matching { it.name == 'runClientGameTest' }.configureEach {
     jvmArgs "-Ddonut.killswitch.dir=${layout.buildDirectory.dir('run/clientGameTest-killswitch').get().asFile}"
-    if (providers.gradleProperty('antiCheatProbeOnly').orElse('false').get() == 'true')
+    if (providers.gradleProperty('antiCheatProbeOnly').orElse('false').get() == 'true'
+            || providers.gradleProperty('guardServerTestsOnly').orElse('false').get() == 'true')
         jvmArgs '-Dfabric.client.gametest.disableNetworkSynchronizer=true'
 }

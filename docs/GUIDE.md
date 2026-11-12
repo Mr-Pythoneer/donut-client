@@ -408,6 +408,16 @@ More: [implementation plan](sound-detector-implementation-plan.md)
 
 ## Blatant tools
 
+### Where Blatant tools may run
+
+Fly, Auto Miner, AutoBuilder and Auto Eat **always run in single-player**. On a multiplayer server they **stay off until you allow that server.** Anti-cheats flag all four, and Fly gets you banned within seconds (see [anticheat-results.md](anticheat-results.md)).
+
+- **What happens when blocked:** switching one on, by shortcut or in the menu, does nothing. A line explains why: on the action bar in game, or in the footer when the menu is open. A module that's already running, for example from a saved setting or a profile, stops before its next tick.
+- **To allow a server:** select any of the four modules, then under **Where it may run** turn on **Allow on *address***. Only do that where the server's rules permit these tools. **Allowed servers** lists every server you've allowed, and turning the switch off removes it again.
+- **To turn the guard off everywhere:** use **Block on servers I haven't allowed**. It's on by default.
+
+Every module's settings also show its **Anti-cheat test** result. Tiles carry a tag only when there's a warning: **Bans fast**, **Flagged**, or **Limited**, for tools that anti-xray or Paper servers make unreliable.
+
 ### Auto Miner
 
 [![Auto Miner](videos/09-auto-miner.gif)](videos/09-auto-miner.mp4)
@@ -472,6 +482,7 @@ Builds `.litematic` and `.schem` schematics.
 
 - **Show in world** shows a ghost preview. **Place in world** lets you aim it: **R** rotates, **Page Up/Down** raises or lowers it, **Enter** anchors it.
 - **Engines:** **Spectre Creative** for Creative singleplayer, or **Survival / multiplayer**, which walks, picks materials and uses ordinary placement.
+- **Tall builds:** when a block can only be placed from above, for example the top row of a free-standing wall, it puts down a temporary step block next to it, using dirt, cobblestone, stone or netherrack from your hotbar. It stands on the step to place the block, and the completion message says how many steps are left to clear.
 
 More: [AutoBuilder guide](../AUTOBUILDER.md)
 

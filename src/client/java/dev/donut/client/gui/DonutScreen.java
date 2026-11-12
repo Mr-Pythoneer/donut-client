@@ -48,6 +48,9 @@ public final class DonutScreen extends Screen {
     private static final int CARD_HEADER = 78;
     /** Module tile height and the vertical gap between tiles, in workspace units. */
     public static final int TILE_H = 58, TILE_GAP = 10;
+    /** Why a Blatant module refused to switch on (multiplayer guard), shown in the footer until {@link #noticeUntil}. */
+    private String notice;
+    private long noticeUntil;
     private int searchY = 220;
     private long resultMask = -1;
     private int railW, bodyX, bodyW, columns;
@@ -394,7 +397,16 @@ public final class DonutScreen extends Screen {
         round(g, x, y, w, TILE_H, corner(8), alpha(0xFFFFFF, hover * .035 + (selected ? .03 : 0)));
         outline(g, x, y, w, TILE_H, corner(8), selected ? alpha(config.accentColor, .85) : chromeBorder());
         int textW = w - 70, nameY = y + 11, detailY = y + TILE_H - 11 - s(13);
-        text(g, font, ellipsize(name(index), textW), x + 14, nameY, TEXT);
+        int nameW = textW;
+        if (dev.donut.client.guard.ModuleRisk.showOnTile(index)) {
+            var risk = dev.donut.client.guard.ModuleRisk.of(index);
+            int tagW = WorkspacePaint.smallWidth(font, risk.level().label) + s(12), tagH = s(17);
+            int tagX = x + w - 56 - tagW;
+            round(g, tagX, nameY - 1, tagW, tagH, tagH / 2f, alpha(risk.level().color & 0xFFFFFF, .14));
+            smallText(g, font, risk.level().label, tagX + s(6), midSmall(nameY - 1, tagH), risk.level().color);
+            nameW = Math.max(s(40), tagX - (x + 14) - s(8));
+        }
+        text(g, font, ellipsize(name(index), nameW), x + 14, nameY, TEXT);
         String detail;
         int detailColor = DIM;
         if (searching()) {
@@ -465,6 +477,8 @@ public final class DonutScreen extends Screen {
                     rowX, settingsCursor, rowW, s(32), () -> toggleEnabled(index));
             settingsCursor += s(52);
             drawModuleSettings(g, index);
+            // After the module's own settings, so adding it never pushes a setting row below the visible area.
+            drawRiskAndGuard(g, index);
             section(g, "Keybind", 0);
             keybindButton(g, index, rowX, settingsCursor, rowW, s(30));
             settingsCursor += s(46);
@@ -565,6 +579,31 @@ public final class DonutScreen extends Screen {
         else if (index == 4) drawChunkFinderSettings(g, 0);
         else if (index == 3) drawAutoBuilderSettings(g, 0);
         else if (index == 2) drawFreecamSettings(g, 0);
+    }
+
+    /** The anti-cheat test result for this module and, for the Blatant ones, where they're allowed to run. */
+    private void drawRiskAndGuard(GuiGraphics g, int index) {
+        var risk = dev.donut.client.guard.ModuleRisk.of(index);
+        section(g, "Anti-cheat test", 0);
+        smallText(g, font, risk.tag(), rowX, settingsCursor, risk.level().color);
+        settingsCursor += s(13);
+        help(g, risk.detail() + " " + dev.donut.client.guard.ModuleRisk.TESTED);
+        if (!dev.donut.client.guard.BlatantGuard.isBlatant(index)) return;
+        var guard = config.blatantGuard;
+        var place = dev.donut.client.guard.BlatantGuard.current(minecraft);
+        section(g, "Where it may run", 0);
+        settingToggle(g, "guardOn", "Block on servers I haven't allowed", 0, () -> guard.blockUnlisted, () -> guard.blockUnlisted = !guard.blockUnlisted);
+        if (place.singleplayer()) help(g, "You're in single-player, where Blatant modules always run.");
+        else if (!place.inWorld()) help(g, "Join a server to allow Blatant modules there.");
+        else if (place.address() == null) help(g, "This server has no address to remember, so it can't be allowed.");
+        else {
+            settingToggle(g, "guardAllow", "Allow on " + place.address(), 0, () -> guard.allows(place.address()),
+                    () -> { guard.allow(place.address(), !guard.allows(place.address())); notice = null; });
+            help(g, guard.blockUnlisted && !guard.allows(place.address())
+                    ? "Fly, Auto Miner, AutoBuilder and Auto Eat stay off here. Only allow a server whose rules permit them."
+                    : "Fly, Auto Miner, AutoBuilder and Auto Eat can run here.");
+        }
+        if (!guard.allowedServers.isEmpty()) help(g, "Allowed servers: " + String.join(", ", guard.allowedServers));
     }
 
     private void help(GuiGraphics g, String value) {
@@ -798,6 +837,14 @@ public final class DonutScreen extends Screen {
     private void toggleEnabled(int index) {
         // An expired test build keeps every module off (see KillSwitch); the footer says why.
         if (dev.donut.client.DonutClient.expired()) return;
+        if ((index == 6 || index == 20 || index == 28) && !enabled(index)) {
+            var place = dev.donut.client.guard.BlatantGuard.current(minecraft);
+            if (!dev.donut.client.guard.BlatantGuard.allowed(config.blatantGuard, place)) {
+                notice = dev.donut.client.guard.BlatantGuard.blockedMessage(name(index), place);
+                noticeUntil = net.minecraft.util.Util.getMillis() + 6000;
+                return;
+            }
+        }
         if (index == 28) {
             change(() -> config.autoEat.enabled = !config.autoEat.enabled);
         } else if (index == 27) {
@@ -1809,9 +1856,12 @@ public final class DonutScreen extends Screen {
             String conflict = conflicts(hoveredBinding);
             message = conflict.isEmpty() ? "Click to assign a key or mouse button." : "Also used by: " + conflict;
         }
+        boolean blockedNotice = message.isEmpty() && notice != null && net.minecraft.util.Util.getMillis() < noticeUntil;
+        if (blockedNotice) message = notice;
         boolean hint = message.isEmpty();
         if (hint) message = tab == 2 || tab == 6 ? "Esc closes" : "Ctrl+F search  \u00B7  Enter opens the top result  \u00B7  Esc closes";
-        smallText(g, font, ellipsizeSmall(message, W - 48 - statusW - 24), 24, midSmall(top, height), hint ? DIM : CONTROL_MUTED);
+        smallText(g, font, ellipsizeSmall(message, W - 48 - statusW - 24), 24, midSmall(top, height),
+                blockedNotice ? 0xFFF0B45A : hint ? DIM : CONTROL_MUTED);
     }
 
     private String ellipsize(String value, int maxWidth) {
