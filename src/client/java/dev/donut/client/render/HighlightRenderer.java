@@ -18,7 +18,7 @@ import dev.donut.client.config.ClientConfig;
 import dev.donut.client.chunkfinder.ChunkFinderScanner;
 import dev.donut.client.amethyst.AmethystScanner;
 import dev.donut.client.blockesp.BlockEspController;
-import dev.donut.client.blockesp.OreMarker;
+import dev.donut.client.blockesp.OreConfidence;
 import dev.donut.client.gui.BaseFinderPanel;
 import dev.donut.client.autobuild.MaterialTracker;
 import net.fabricmc.fabric.api.client.rendering.v1.FabricRenderState;
@@ -177,13 +177,17 @@ public final class HighlightRenderer implements AutoCloseable {
         if (blockEsp != null && config.blockEsp.enabled && config.blockEsp.opacity > 0
                 && context.world().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
             var settings = config.blockEsp;
-            for (var marker : blockEsp.snapshot()) {
-                int rgb = marker.kind() == OreMarker.Kind.EMERALD ? settings.emeraldColor : settings.coalColor;
-                int outline = settings.opacity << 24 | rgb;
+            int tracersLeft = BlockEspController.MAX_TRACERS;
+            for (var prediction : blockEsp.predictions()) {
+                var marker = prediction.marker();
+                int rgb = settings.oreColor(marker.kind());
+                // Confirmed markers keep the chosen opacity; less certain ones fade (never fully out).
+                double alpha = settings.opacity / 255.0 * (settings.fadeByConfidence ? OreConfidence.fade(prediction.confidence()) : 1);
+                int outline = argb(rgb, alpha);
                 AABB bounds = new AABB(marker.pos()).inflate(.003);
                 if (context.frustum().isVisible(bounds)) boxes.add(new DrawBox(bounds.move(-camera.x, -camera.y, -camera.z),
-                        argb(rgb, settings.opacity / 255.0 * .12), outline, 1.8f, true));
-                if (settings.tracers) lines.add(new DrawLine(Vec3.ZERO, Vec3.atCenterOf(marker.pos()).subtract(camera), outline, true));
+                        argb(rgb, alpha * .12), outline, 1.8f, true));
+                if (settings.tracers && tracersLeft-- > 0) lines.add(new DrawLine(Vec3.ZERO, Vec3.atCenterOf(marker.pos()).subtract(camera), outline, true));
             }
         }
         var storageEsp = dev.donut.client.storageesp.StorageEspScanner.get();

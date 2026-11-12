@@ -499,7 +499,7 @@ public final class DonutScreen extends Screen {
             case 11 -> "light debug detector artificial underground denoise lighting";
             case 10 -> "amethyst scanner bypass geode anti-xray palette light anbs crystals";
             case 12 -> "sound detector sounddetector audio player activity alarm warning chest piston machine machinery";
-            case 13 -> "blockesp block esp ore ores seed predictor prediction deepslate emerald coal rare";
+            case 13 -> "blockesp block esp ore ores seed predictor prediction deepslate stone emerald diamond gold lapis redstone iron copper coal rare confidence";
             case 14 -> "staff detector staffdetector moderator admin spectator invisible vanish presence roster";
             case 16 -> "coordinates coords xyz position facing direction chunk nether overworld biome hud";
             case 17 -> "waypoints waypoint markers beacon beam mark location home base save coordinates";
@@ -678,7 +678,7 @@ public final class DonutScreen extends Screen {
             case 10 -> "Find amethyst from palette and lighting clues";
             case 11 -> "Highlight underground artificial light";
             case 12 -> "Warn about nearby interactions, players and machinery";
-            case 13 -> "Predict deepslate emerald and coal from your world seed";
+            case 13 -> "Predict ores from your world seed, with a confidence rating";
             case 14 -> "Observe known staff and possible hidden presence";
             case 15 -> "Highlight chests, barrels, shulkers and other storage";
             case 16 -> "Show position, facing, chunk and Nether coordinates";
@@ -1065,10 +1065,24 @@ public final class DonutScreen extends Screen {
         settingsCursor += s(44);
         help(g, value.seed + " | Vanilla Java 1.21.11");
         section(g, "Targets", 0);
-        settingToggle(g, "emerald", "Deepslate emerald", 0, () -> value.emerald, () -> value.emerald = !value.emerald);
-        colorRow(g, "Emerald color", 0, () -> value.emeraldColor, next -> value.emeraldColor = next);
-        settingToggle(g, "coal", "Deepslate coal", 0, () -> value.coal, () -> value.coal = !value.coal);
-        colorRow(g, "Coal color", 0, () -> value.coalColor, next -> value.coalColor = next);
+        // Ids stay "m13.emerald"/"m13.coal" for the original two; colour rows only show for selected ores.
+        for (var kind : dev.donut.client.blockesp.OreMarker.Kind.values()) {
+            settingToggle(g, kind.id, kind.label, 0, () -> value.oreEnabled(kind), () -> value.setOreEnabled(kind, !value.oreEnabled(kind)));
+            if (value.oreEnabled(kind)) colorRow(g, kind.label + " color", 0, () -> value.oreColor(kind), next -> value.setOreColor(kind, next));
+        }
+        section(g, "Variants", 0);
+        settingToggle(g, "stoneVariants", "Stone variants", 0, () -> value.stoneVariants, () -> value.stoneVariants = !value.stoneVariants);
+        settingToggle(g, "deepslateVariants", "Deepslate variants", 0, () -> value.deepslateVariants, () -> value.deepslateVariants = !value.deepslateVariants);
+        help(g, "Stone ores sit mostly above Y=0 and deepslate ores below Y=8. Common ores add many markers; the nearest "
+                + dev.donut.client.blockesp.BlockEspController.MAX_MARKERS + " are drawn.");
+        section(g, "Confidence", 0);
+        slider(g, "minConfidence", "Minimum confidence to show", 0, () -> value.minConfidence, next -> value.minConfidence = (int) next, 0, 100, 1, "%");
+        settingToggle(g, "fadeByConfidence", "Fade by confidence", 0, () -> value.fadeByConfidence, () -> value.fadeByConfidence = !value.fadeByConfidence);
+        var match = dev.donut.client.blockesp.BlockEspController.get();
+        help(g, (match == null || match.totalChunks() == 0 ? "Seed match appears once predictions run. "
+                : match.seedMatchText() + ". " + dev.donut.client.blockesp.OreConfidence.verdictText(match.seedVerdict()) + ". ")
+                + "Confirmed: you received that ore. Likely: hidden in rock (Anti-Xray may disguise it). Unverified: chunk not received yet. "
+                + "Exposed ores can't be disguised, so they measure the seed match.");
         section(g, "Display", 0);
         slider(g, "radius", "Prediction radius", 0, () -> value.radius, next -> value.radius = (int) next, 1, 8, 1, " chunks");
         slider(g, "opacity", "Opacity", 0, () -> value.opacity, next -> value.opacity = (int) next, 0, 255, 1, "");
