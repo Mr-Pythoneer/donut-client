@@ -1,9 +1,12 @@
 package dev.donut.client.gametest;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import dev.donut.client.DonutClient;
 import dev.donut.client.config.WaypointSettings;
 import dev.donut.client.durability.DurabilityAlertController;
+import dev.donut.client.gametest.mixin.GameRendererBobInvoker;
 import dev.donut.client.gui.CoordinatesHud;
+import dev.donut.client.gui.WaypointLabels;
 import dev.donut.client.input.ModuleKeybinds;
 import dev.donut.client.waypoints.Waypoint;
 import dev.donut.client.waypoints.WaypointController;
@@ -19,9 +22,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
 
 /** Coordinates HUD, hold-to-zoom, durability warnings and waypoints, all through the production instances. */
 public final class QualityOfLifeGameTest implements FabricClientGameTest {
@@ -155,6 +160,24 @@ public final class QualityOfLifeGameTest implements FabricClientGameTest {
             Path marked = screenshot(context, "qol-06-waypoints");
             // The markers sit behind the wall, ahead of the player: the middle of the frame must change.
             require(changed(plain, marked, 320, 150, 640, 500) > 1500, "Waypoint markers, beams and labels did not render through the wall");
+            // View bobbing: while walking, labels use exactly vanilla's bob and hurt transform, so they stay on their beams.
+            boolean bobbing = context.computeOnClient(mc -> mc.options.bobView().get());
+            context.runOnClient(mc -> mc.options.bobView().set(true));
+            context.getInput().holdKey(options -> options.keyLeft);
+            try {
+                context.waitTicks(8);
+                requireVanillaBob(context, true);
+                screenshot(context, "qol-07-walking-a");
+                context.waitTicks(3);
+                requireVanillaBob(context, true);
+                screenshot(context, "qol-08-walking-b");
+                context.runOnClient(mc -> mc.options.bobView().set(false));
+                context.waitTick();
+                requireVanillaBob(context, false);
+            } finally {
+                context.getInput().releaseKey(options -> options.keyLeft);
+                context.runOnClient(mc -> mc.options.bobView().set(bobbing));
+            }
             server.runCommand("execute in minecraft:the_nether run tp @a -4.5 80 12.5");
             context.waitFor(mc -> mc.level != null && mc.level.dimension() == net.minecraft.world.level.Level.NETHER, 400);
             context.runOnClient(mc -> {
@@ -187,6 +210,39 @@ public final class QualityOfLifeGameTest implements FabricClientGameTest {
                 ZoomController.get().reset();
             });
         }
+    }
+
+    /**
+     * The label projection's bob pose equals vanilla's own {@code bobHurt}/{@code bobView} result this frame, with and
+     * without a (client-only, faked) hurt tilt. {@code bobbing} says whether a view bob is expected at all.
+     */
+    private static void requireVanillaBob(ClientGameTestContext context, boolean bobbing) {
+        context.runOnClient(mc -> {
+            float partial = mc.gameRenderer.getMainCamera().getPartialTickTime();
+            Matrix4f ours = WaypointLabels.cameraBob(mc, partial), vanilla = vanillaBob(mc, partial);
+            require(ours.equals(vanilla, 1.0e-5f), "Label bob differs from vanilla:\n" + ours + "\nvs\n" + vanilla);
+            boolean identity = ours.equals(new Matrix4f(), 1.0e-6f);
+            require(bobbing != identity, bobbing ? "Walking produced no view bob" : "View bob applied with View Bobbing off");
+            int hurtTime = mc.player.hurtTime, duration = mc.player.hurtDuration;
+            mc.player.hurtTime = 6;
+            mc.player.hurtDuration = 10;
+            try {
+                Matrix4f hurt = WaypointLabels.cameraBob(mc, partial), vanillaHurt = vanillaBob(mc, partial);
+                require(hurt.equals(vanillaHurt, 1.0e-5f), "Hurt tilt differs from vanilla:\n" + hurt + "\nvs\n" + vanillaHurt);
+                require(!hurt.equals(ours, 1.0e-4f), "The hurt tilt was not applied");
+            } finally {
+                mc.player.hurtTime = hurtTime;
+                mc.player.hurtDuration = duration;
+            }
+        });
+    }
+
+    private static Matrix4f vanillaBob(Minecraft mc, float partial) {
+        var pose = new PoseStack();
+        var renderer = (GameRendererBobInvoker) mc.gameRenderer;
+        renderer.donut$bobHurt(pose, partial);
+        if (mc.options.bobView().get()) renderer.donut$bobView(pose, partial);
+        return new Matrix4f(pose.last().pose());
     }
 
     /** None of these features move the player: compare client and server positions at the end. */

@@ -9,6 +9,10 @@ import java.util.Locale;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -16,11 +20,12 @@ import org.joml.Vector4f;
 
 /**
  * Screen-space waypoint labels. The view-projection is rebuilt from the camera each frame (same FOV invoker as the
- * Base Finder card), so no render hook is needed. View bobbing is not applied, so labels may sway slightly while walking.
+ * Base Finder card), so no render hook is needed. It includes vanilla's hurt tilt and view bobbing (the
+ * {@code GameRenderer#bobHurt}/{@code #bobView} transforms), so labels stay on their beams while walking.
  */
 public final class WaypointLabels {
     public static final int MAX_LABELS = 64;
-    private static final float LABEL_LIFT = 0.75f;
+    private static final float LABEL_LIFT = 0.75f, PI = (float) Math.PI;
 
     private WaypointLabels() { }
 
@@ -40,7 +45,8 @@ public final class WaypointLabels {
 
         float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         float fov = ((BaseFinderProjectionAccessor) mc.gameRenderer).donut$worldFov(camera, partial, true);
-        Matrix4f viewProjection = viewProjection(mc.gameRenderer.getProjectionMatrix(fov), camera.rotation());
+        Matrix4f viewProjection = viewProjection(mc.gameRenderer.getProjectionMatrix(fov), cameraBob(mc, camera.getPartialTickTime()),
+                camera.rotation());
         int width = g.guiWidth(), height = g.guiHeight();
         int alpha = Math.max(40, settings.opacity);
         int count = Math.min(shown.size(), MAX_LABELS);
@@ -89,10 +95,74 @@ public final class WaypointLabels {
         WorkspacePaint.smallText(g, font, clipped, left + pad + swatch + 4 * s, WorkspacePaint.centered(top, h, WorkspacePaint.SMALL_SIZE), Math.max(alpha, 160) << 24 | 0xF2F4F7);
     }
 
-    /** Projection times the camera's view rotation, as vanilla builds it; positions must be camera-relative. */
+    /** Projection times the camera's view rotation, without bobbing; positions must be camera-relative. */
     static Matrix4f viewProjection(Matrix4f projection, Quaternionf cameraRotation) {
+        return viewProjection(projection, new Matrix4f(), cameraRotation);
+    }
+
+    /**
+     * Projection, then the hurt/bob pose, then the camera's view rotation: the same order vanilla's
+     * {@code GameRenderer#renderLevel} uses for the world. Positions must be camera-relative.
+     */
+    static Matrix4f viewProjection(Matrix4f projection, Matrix4f bobPose, Quaternionf cameraRotation) {
         Matrix4f view = new Matrix4f().rotation(cameraRotation.conjugate(new Quaternionf()));
-        return new Matrix4f(projection).mul(view);
+        return new Matrix4f(projection).mul(bobPose).mul(view);
+    }
+
+    /**
+     * The hurt tilt and view bob vanilla applies to the world this frame, read from the camera entity and the
+     * "View Bobbing" and "Damage Tilt" options. Identity when neither applies.
+     */
+    public static Matrix4f cameraBob(Minecraft mc, float partialTick) {
+        Entity entity = mc.getCameraEntity();
+        float hurt = -1, hurtDir = 0, death = -1;
+        int hurtDuration = 0;
+        if (entity instanceof LivingEntity living) {
+            hurt = living.hurtTime - partialTick;
+            hurtDuration = living.hurtDuration;
+            hurtDir = living.getHurtDir();
+            if (living.isDeadOrDying()) death = Math.min(living.deathTime + partialTick, 20);
+        }
+        boolean bobbing = mc.options.bobView().get() && entity instanceof AbstractClientPlayer;
+        float walk = 0, bob = 0;
+        if (bobbing) {
+            var state = ((AbstractClientPlayer) entity).avatarState();
+            walk = state.getBackwardsInterpolatedWalkDistance(partialTick);
+            bob = state.getInterpolatedBob(partialTick);
+        }
+        return bobPose(hurt, hurtDuration, hurtDir, mc.options.damageTiltStrength().get(), death, bobbing, walk, bob);
+    }
+
+    /**
+     * Pure version of vanilla's {@code bobHurt} followed by {@code bobView}.
+     *
+     * @param hurt         {@code hurtTime - partialTick}; negative when not hurt
+     * @param hurtDuration the entity's {@code hurtDuration}
+     * @param hurtDir      the entity's hurt direction in degrees
+     * @param damageTilt   the "Damage Tilt" option, 0..1
+     * @param death        {@code min(deathTime + partialTick, 20)} while dying, otherwise negative
+     * @param bobbing      the "View Bobbing" option is on and the camera entity is a player
+     * @param walk         backwards-interpolated walk distance
+     * @param bob          interpolated bob amount
+     */
+    static Matrix4f bobPose(float hurt, int hurtDuration, float hurtDir, double damageTilt, float death,
+            boolean bobbing, float walk, float bob) {
+        Matrix4f pose = new Matrix4f();
+        if (death >= 0) pose.rotate(new Quaternionf().rotationZ((40 - 8000 / (death + 200)) * Mth.DEG_TO_RAD));
+        if (hurt >= 0 && hurtDuration > 0) {
+            float t = hurt / hurtDuration;
+            t = Mth.sin(t * t * t * t * PI);
+            pose.rotate(new Quaternionf().rotationY(-hurtDir * Mth.DEG_TO_RAD));
+            pose.rotate(new Quaternionf().rotationZ((float) (-t * 14.0 * damageTilt) * Mth.DEG_TO_RAD));
+            pose.rotate(new Quaternionf().rotationY(hurtDir * Mth.DEG_TO_RAD));
+        }
+        if (bobbing) {
+            float swing = Mth.sin(walk * PI);
+            pose.translate(swing * bob * 0.5f, -Math.abs(Mth.cos(walk * PI) * bob), 0);
+            pose.rotate(new Quaternionf().rotationZ(swing * bob * 3 * Mth.DEG_TO_RAD));
+            pose.rotate(new Quaternionf().rotationX(Math.abs(Mth.cos(walk * PI - 0.2f) * bob) * 5 * Mth.DEG_TO_RAD));
+        }
+        return pose;
     }
 
     /** GUI coordinates of a camera-relative point, or {@code null} when it is behind the camera or far off-screen. */

@@ -39,7 +39,7 @@ Save named places and see them through walls as an outlined block, a vertical be
 
 - **Show Nether / Overworld waypoints converted** also shows Overworld waypoints in the Nether at their 1/8 position, and the reverse.
 - Beams, labels, distance in labels, opacity and label range (32–4096 blocks) are configurable.
-- Labels are projected from the camera each frame. View bobbing isn't applied, so labels may sway slightly while you walk.
+- Labels are projected from the camera each frame with the same view-bobbing and damage-tilt transform vanilla applies to the world (following the **View Bobbing** and **Damage Tilt** options), so they stay on their beams while you walk or take damage. The Nausea and portal screen warp isn't applied to labels.
 
 ## Zoom (Visual)
 
