@@ -1351,6 +1351,8 @@ public final class DonutScreen extends Screen {
         section(g, "Display", 0);
         slider(g, "range", "Range", 0, () -> value.range, next -> value.range = (int) next,
                 dev.donut.client.config.SearchSettings.MIN_RANGE, dev.donut.client.config.SearchSettings.MAX_RANGE, 16, " blocks");
+        help(g, minecraft.level == null ? "Only chunks the server has sent can be searched."
+                : "Loaded radius here: about " + dev.donut.client.search.SearchScanner.loadedRadiusBlocks(minecraft) + " blocks. Farther blocks are not on your client.");
         slider(g, "maxResults", "Max results", 0, () -> value.maxResults, next -> value.maxResults = (int) next,
                 dev.donut.client.config.SearchSettings.MIN_RESULTS, dev.donut.client.config.SearchSettings.MAX_RESULTS, 16, "");
         slider(g, "opacity", "Opacity", 0, () -> value.opacity, next -> value.opacity = (int) next, 0, 255, 1, "");
