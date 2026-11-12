@@ -38,10 +38,9 @@ public final class NewToolsGuiGameTest implements FabricClientGameTest {
 
             // Unused IDs never get a tile; every real module does, and the footer counts only real modules.
             context.runOnClient(mc -> {
-                for (int id = 22; id <= 26; id++) {
-                    require(!ModuleKeybinds.exists(id), "ID " + id + " unexpectedly has a mapping");
-                    require(!matches(mc.screen, id), "Unused ID " + id + " shows a tile");
-                }
+                // Merge-safe: once other modules fill 22-26 they have mappings and are checked like any module.
+                for (int id = ModuleKeybinds.FIRST_MODULE; id < ModuleKeybinds.MODULE_LIMIT; id++)
+                    if (!ModuleKeybinds.exists(id)) require(!matches(mc.screen, id), "Unused ID " + id + " shows a tile");
                 int shown = 0;
                 for (int id = ModuleKeybinds.FIRST_MODULE; id < ModuleKeybinds.MODULE_LIMIT; id++) if (matches(mc.screen, id)) shown++;
                 require(shown == ModuleKeybinds.registeredCount(), "All modules shows " + shown + " of " + ModuleKeybinds.registeredCount());
