@@ -33,10 +33,17 @@ public final class AutoMinerGameTest implements FabricClientGameTest {
     private static final BlockPos BURIED = new BlockPos(-6, 62, 0);
     /** Slow to mine, so the miner can be interrupted mid-break. */
     private static final BlockPos DEBRIS = new BlockPos(5, 64, 5);
+    /** Enchantment scenario: a stone diamond ore (Fortune pickaxe) and ancient debris (fastest pickaxe). */
+    private static final BlockPos FORTUNE_ORE = new BlockPos(-6, 64, 9), FAST_DEBRIS = new BlockPos(-8, 64, 9);
+    /** Gravel scenario: an ore buried in a stone hill, with a gravel column over the tunnel path at x = 3. */
+    private static final BlockPos GRAVEL_ORE = new BlockPos(6, 65, -10), GRAVEL_BASE = new BlockPos(3, 66, -10);
 
     private static boolean tracking;
     private static double maxStep;
     private static Vec3 last;
+    /** Gravel scenario bookkeeping: falling blocks seen at all, and the first time one was over the player. */
+    private static boolean sawFalling;
+    private static String fallViolation;
     private static boolean listening;
 
     @Override
@@ -180,6 +187,38 @@ public final class AutoMinerGameTest implements FabricClientGameTest {
                 server.runCommand("setblock 3 64 6 minecraft:stone");
                 context.waitFor(client -> client.level.getBlockState(plain).is(Blocks.STONE), 100);
 
+                // 5. Enchantments: a stone diamond ore (Silk Touch not wanted) uses the Fortune III pickaxe over the faster
+                // Efficiency V one; ancient debris has no Fortune or Silk Touch preference, so the fastest wins.
+                server.runCommand("item replace entity @a hotbar.3 with minecraft:diamond_pickaxe[minecraft:enchantments={\"minecraft:fortune\":3}]");
+                server.runCommand("item replace entity @a hotbar.4 with minecraft:diamond_pickaxe[minecraft:enchantments={\"minecraft:efficiency\":5}]");
+                server.runCommand("setblock " + FORTUNE_ORE.getX() + " " + FORTUNE_ORE.getY() + " " + FORTUNE_ORE.getZ() + " minecraft:diamond_ore");
+                // The half-mined debris from scenario 2 would otherwise be the next target.
+                server.runCommand("setblock " + DEBRIS.getX() + " " + DEBRIS.getY() + " " + DEBRIS.getZ() + " minecraft:stone");
+                context.waitFor(client -> client.level.getBlockState(DEBRIS).is(Blocks.STONE)
+                        && client.player.getInventory().getItem(3).is(Items.DIAMOND_PICKAXE)
+                        && client.player.getInventory().getItem(4).is(Items.DIAMOND_PICKAXE)
+                        && client.level.getBlockState(FORTUNE_ORE).is(Blocks.DIAMOND_ORE)
+                        && miner.state() == State.OFF, 100);
+                startTracking(context);
+                context.runOnClient(client -> settings.enabled = true);
+                await(context, miner, client -> miner.state() == State.MINING && FORTUNE_ORE.equals(miner.target())
+                        && client.gameMode.isDestroying(), 600);
+                context.runOnClient(client -> require(client.player.getInventory().getSelectedSlot() == 3,
+                        "The Fortune pickaxe was not chosen for a stone diamond ore: slot " + client.player.getInventory().getSelectedSlot()));
+                await(context, miner, client -> client.level.getBlockState(FORTUNE_ORE).isAir(), 600);
+                await(context, miner, client -> miner.state() == State.SEARCHING, 300);
+                server.runCommand("setblock " + FAST_DEBRIS.getX() + " " + FAST_DEBRIS.getY() + " " + FAST_DEBRIS.getZ() + " minecraft:ancient_debris");
+                await(context, miner, client -> miner.state() == State.MINING && FAST_DEBRIS.equals(miner.target())
+                        && client.gameMode.isDestroying(), 600);
+                context.runOnClient(client -> require(client.player.getInventory().getSelectedSlot() == 4,
+                        "The Efficiency pickaxe was not chosen for ancient debris: slot " + client.player.getInventory().getSelectedSlot()));
+                await(context, miner, client -> client.level.getBlockState(FAST_DEBRIS).isAir() && miner.mined() == 2, 600);
+                await(context, miner, client -> miner.state() == State.SEARCHING, 300);
+                context.runOnClient(client -> settings.enabled = false);
+                context.waitTick();
+                requireNoTeleport();
+                stopTracking();
+
                 // 3. Buried on: no walkable spot can see it, so it tunnels 1x2 to it without digging straight down.
                 server.runCommand("setblock " + DEBRIS.getX() + " " + DEBRIS.getY() + " " + DEBRIS.getZ() + " minecraft:stone");
                 server.runCommand("tp @a -9.5 65 0.5 -90 0");
@@ -194,6 +233,34 @@ public final class AutoMinerGameTest implements FabricClientGameTest {
                     require(client.level.getBlockState(LAVA_SIDE).is(Blocks.DIAMOND_ORE), "The lava-side ore was mined");
                     // The first step is beside the start, never straight down under it.
                     require(!client.level.getBlockState(new BlockPos(-10, 64, 0)).isAir(), "Dug straight down under the start");
+                });
+                requireNoTeleport();
+                stopTracking();
+
+                // 6. Gravel: a buried ore in a stone hill with three gravel above the tunnel path. It breaks the block
+                // under the gravel, waits for what falls to land, mines it again until the column is gone, and never
+                // stands under a falling block.
+                context.runOnClient(client -> settings.enabled = false);
+                context.waitTick();
+                server.runCommand("fill 2 65 -12 10 70 -8 minecraft:stone");
+                server.runCommand("setblock " + GRAVEL_ORE.getX() + " " + GRAVEL_ORE.getY() + " " + GRAVEL_ORE.getZ() + " minecraft:diamond_ore");
+                server.runCommand("fill 3 67 -10 3 69 -10 minecraft:gravel");
+                server.runCommand("tp @a 0.5 65 -9.5 -90 0");
+                context.waitFor(client -> client.player.position().distanceToSqr(new Vec3(0.5, 65, -9.5)) < 1.0e-3 && client.player.onGround()
+                        && client.level.getBlockState(GRAVEL_BASE.above(3)).is(Blocks.GRAVEL)
+                        && client.level.getBlockState(GRAVEL_ORE).is(Blocks.DIAMOND_ORE), 200);
+                startTracking(context);
+                context.runOnClient(client -> settings.enabled = true);
+                await(context, miner, client -> miner.state() == State.TUNNELING && GRAVEL_ORE.equals(miner.target()), 600);
+                await(context, miner, client -> miner.mined() == 1 && client.level.getBlockState(GRAVEL_ORE).isAir(), 1600);
+                screenshot(context, "auto-miner-04-gravel");
+                context.runOnClient(client -> {
+                    for (int dy = 0; dy <= 3; dy++)
+                        require(!client.level.getBlockState(GRAVEL_BASE.above(dy)).is(Blocks.GRAVEL), "Gravel left at " + GRAVEL_BASE.above(dy));
+                    require(miner.fallenCleared() >= 1, "Nothing that fell in was cleared: " + miner.fallenCleared());
+                    require(sawFalling, "No falling gravel was ever seen");
+                    require(fallViolation == null, fallViolation);
+                    require(client.player.getHealth() >= client.player.getMaxHealth() - 0.01f, "The player was hurt: " + client.player.getHealth());
                 });
                 requireNoTeleport();
                 stopTracking();
@@ -265,10 +332,19 @@ public final class AutoMinerGameTest implements FabricClientGameTest {
         Vec3 now = client.player.position();
         if (last != null) maxStep = Math.max(maxStep, now.distanceTo(last));
         last = now;
+        var feet = client.player.blockPosition();
+        for (var falling : client.level.getEntitiesOfClass(net.minecraft.world.entity.item.FallingBlockEntity.class,
+                client.player.getBoundingBox().inflate(16, 32, 16), net.minecraft.world.entity.Entity::isAlive)) {
+            sawFalling = true;
+            var at = falling.blockPosition();
+            if (fallViolation == null && at.getX() == feet.getX() && at.getZ() == feet.getZ() && at.getY() >= feet.getY())
+                fallViolation = "A falling block was over the player at " + at + " while standing at " + feet;
+        }
+        if (fallViolation == null && client.player.isInWall()) fallViolation = "The player was inside a block at " + now;
     }
 
     private static void startTracking(ClientGameTestContext context) {
-        context.runOnClient(client -> { last = null; maxStep = 0; tracking = true; });
+        context.runOnClient(client -> { last = null; maxStep = 0; sawFalling = false; fallViolation = null; tracking = true; });
     }
 
     private static void stopTracking() { tracking = false; last = null; }

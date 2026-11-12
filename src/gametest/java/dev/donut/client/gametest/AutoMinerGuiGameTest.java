@@ -46,6 +46,9 @@ public final class AutoMinerGuiGameTest implements FabricClientGameTest {
             var saved = store.load().autoMiner;
             require(saved.oreEnabled(OreKind.COAL) && saved.oreEnabled(OreKind.DIAMOND), "Ore toggle did not persist");
             require(saved.includeBuried, "Buried-ore preference did not persist");
+            require(saved.preferFortune, "Prefer Fortune should default on");
+            GuiTestInput.click(context, "m" + MODULE + ".minerFortune");
+            require(!store.load().autoMiner.preferFortune, "Prefer Fortune did not persist");
             GuiTestInput.click(context, "m" + MODULE + ".minerRange"); // Midpoint of 8-64.
             context.waitTicks(2);
             context.runOnClient(mc -> require(config.autoMiner.range >= 34 && config.autoMiner.range <= 38, "Range slider: " + config.autoMiner.range));
