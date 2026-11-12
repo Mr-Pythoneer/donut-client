@@ -10,6 +10,8 @@ public final class ClientConfig {
     public StaffDetectorSettings staffDetector = new StaffDetectorSettings();
     public BlockEspSettings blockEsp = new BlockEspSettings();
     public StorageEspSettings storageEsp = new StorageEspSettings();
+    public PlayerEspSettings playerEsp = new PlayerEspSettings();
+    public SearchSettings search = new SearchSettings();
     public CoordinatesSettings coordinates = new CoordinatesSettings();
     public ZoomSettings zoom = new ZoomSettings();
     public DurabilityAlertSettings durabilityAlert = new DurabilityAlertSettings();
@@ -53,6 +55,10 @@ public final class ClientConfig {
         blockEsp.sanitize();
         if (storageEsp == null) storageEsp = new StorageEspSettings();
         storageEsp.sanitize();
+        if (playerEsp == null) playerEsp = new PlayerEspSettings();
+        playerEsp.sanitize();
+        if (search == null) search = new SearchSettings();
+        search.sanitize();
         if (coordinates == null) coordinates = new CoordinatesSettings();
         coordinates.sanitize();
         if (zoom == null) zoom = new ZoomSettings();

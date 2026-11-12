@@ -53,6 +53,7 @@ public final class ConfigProfiles {
             Map.entry("freecam", "Freecam"), Map.entry("autoBuilder", "AutoBuilder"), Map.entry("chunkFinder", "Base Finder"),
             Map.entry("lightDebug", "Light Debug"), Map.entry("soundDetector", "Sound Detector"),
             Map.entry("staffDetector", "Staff Detector"), Map.entry("blockEsp", "BlockESP"), Map.entry("storageEsp", "Storage ESP"),
+            Map.entry("playerEsp", "Player ESP"), Map.entry("search", "Search"),
             Map.entry("coordinates", "Coordinates"), Map.entry("zoom", "Zoom"), Map.entry("durabilityAlert", "Durability Alert"),
             Map.entry("autoMiner", "Auto Miner"), Map.entry("waypoints", "Waypoints"),
             Map.entry("amethyst", "Amethyst Scanner"), Map.entry("fullbright", "Fullbright"), Map.entry("fly", "Fly"),
