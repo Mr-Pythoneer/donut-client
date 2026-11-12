@@ -7,7 +7,11 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.AnvilBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.DragonEggBlock;
 import net.minecraft.world.level.block.Fallable;
+import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -18,6 +22,8 @@ import net.minecraft.world.phys.Vec3;
 public final class MinerRules {
     /** The tallest drop the miner will accept, in blocks. */
     public static final int MAX_FALL = 3;
+    /** Most blocks that may fall into one buried target's tunnel (gravel, sand) before it gives up on that target. */
+    public static final int MAX_FALLEN = 12;
 
     /** Block lookup. The controller answers "unknown" (unloaded) positions with a hazard-like state. */
     @FunctionalInterface
@@ -91,7 +97,41 @@ public final class MinerRules {
             return drop > MAX_FALL ? "a fall over " + MAX_FALL + " blocks" : "no floor";
         }
         if (nearFluid(view, floor)) return "lava or water by the floor";
+        if (loose(view.state(feet.above(2)))) return "gravel or sand overhead";
         return null;
+    }
+
+    /**
+     * Gravel, sand, red sand and concrete powder: blocks that fall when the block under them is gone, and that the
+     * miner may break and clear. Anvils, dragon eggs, pointed dripstone and suspicious sand/gravel (which have
+     * contents) are not loose: they stay hazards.
+     */
+    public static boolean loose(BlockState state) {
+        Block block = state.getBlock();
+        return block instanceof FallingBlock && !(block instanceof AnvilBlock) && !(block instanceof DragonEggBlock)
+                && !state.hasBlockEntity();
+    }
+
+    /** How many loose blocks are stacked directly on top of {@code pos}, counted up to {@code limit + 1}. */
+    public static int looseAbove(View view, BlockPos pos, int limit) {
+        int count = 0;
+        for (BlockPos cursor = pos.above(); count <= limit && loose(view.state(cursor)); cursor = cursor.above()) count++;
+        return count;
+    }
+
+    /**
+     * True while a loose block sits right on top of an open cell of the step: it is about to fall into the tunnel
+     * (or already floating, as worldgen gravel can). The miner waits instead of breaking or stepping in.
+     */
+    public static boolean unsettled(View view, Step step) {
+        for (BlockPos pos : step.clear())
+            if (FallingBlock.isFree(view.state(pos)) && loose(view.state(pos.above()))) return true;
+        return false;
+    }
+
+    /** Whether a box (the player's) reaches into the vertical column of {@code cell}. */
+    public static boolean inColumn(net.minecraft.world.phys.AABB box, BlockPos cell) {
+        return box.maxX > cell.getX() && box.minX < cell.getX() + 1 && box.maxZ > cell.getZ() && box.minZ < cell.getZ() + 1;
     }
 
     /** Mining a block directly below your feet is digging straight down; the miner never does that. */
@@ -201,15 +241,31 @@ public final class MinerRules {
         return new Step(next, List.copyOf(clear));
     }
 
-    /** Why a tunnel step is unsafe, or null. */
-    public static String stepHazard(View view, Step step) {
+    /** Why a tunnel step is unsafe, or null. Without the player's feet the "falls on you" rule is not checked. */
+    public static String stepHazard(View view, Step step) { return stepHazard(view, step, null); }
+
+    /**
+     * Why a tunnel step is unsafe, or null. Loose blocks (gravel, sand) in the step or stacked on top of it are
+     * allowed: the miner clears what falls in. They are unsafe when any of them borders lava or water, when more
+     * than {@link #MAX_FALLEN} are stacked over the step, when another kind of falling block (an anvil, dripstone)
+     * sits on the stack, or when they would fall into the column the player stands in ({@code feet}).
+     */
+    public static String stepHazard(View view, Step step, BlockPos feet) {
         for (BlockPos pos : step.clear()) {
             BlockState state = view.state(pos);
             if (nearFluid(view, pos)) return "lava or water ahead";
-            if (!state.isAir() && !breakable(state)) return "an unbreakable block ahead";
+            if (!state.isAir() && !breakable(state) && !loose(state)) return "an unbreakable block ahead";
         }
-        BlockPos top = step.clear().getFirst();
-        if (view.state(top.above()).getBlock() instanceof Fallable) return "falling blocks overhead";
+        int stacked = 0;
+        for (BlockPos pos : step.clear()) {
+            if (step.clear().contains(pos.above())) continue; // The column goes on inside the step.
+            int column = looseAbove(view, pos, MAX_FALLEN);
+            if (column > MAX_FALLEN || (stacked += column) > MAX_FALLEN) return "too much gravel or sand overhead";
+            if (view.state(pos.above(column + 1)).getBlock() instanceof Fallable) return "falling blocks overhead";
+            for (int i = 1; i <= column; i++) if (nearFluid(view, pos.above(i))) return "lava or water by the gravel";
+            if (feet != null && pos.getX() == feet.getX() && pos.getZ() == feet.getZ() && pos.getY() > feet.getY()
+                    && (column > 0 || loose(view.state(pos)))) return "gravel or sand would fall on you";
+        }
         BlockPos floor = step.feet().below();
         BlockState floorState = view.state(floor);
         if (!supports(floorState)) {

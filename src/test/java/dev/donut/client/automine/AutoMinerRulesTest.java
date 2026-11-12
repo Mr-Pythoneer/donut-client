@@ -167,7 +167,8 @@ class AutoMinerRulesTest {
         assertNotNull(MinerRules.stepHazard(new World(Blocks.STONE).set(next.below(2), Blocks.LAVA), step), "Lava under the floor");
         assertNotNull(MinerRules.stepHazard(new World(Blocks.STONE).set(next, Blocks.BEDROCK), step), "Bedrock");
         assertNotNull(MinerRules.stepHazard(new World(Blocks.STONE).set(next.above(), Blocks.CHEST), step), "Block entities stay");
-        assertNotNull(MinerRules.stepHazard(new World(Blocks.STONE).set(next.above(2), Blocks.GRAVEL), step), "Gravel would fall in");
+        assertNull(MinerRules.stepHazard(new World(Blocks.STONE).set(next.above(2), Blocks.GRAVEL), step),
+                "Gravel above the step is cleared as it falls in, not a reason to skip");
         World shallow = new World(Blocks.STONE).set(next.below(), Blocks.AIR).set(next.below(2), Blocks.AIR);
         assertEquals("no floor ahead", MinerRules.stepHazard(shallow, step));
         World deep = new World(Blocks.STONE);
@@ -259,5 +260,95 @@ class AutoMinerRulesTest {
 
     @Test void fortuneMattersForEveryOreButAncientDebris() {
         for (OreKind kind : OreKind.values()) assertEquals(kind != OreKind.ANCIENT_DEBRIS, kind.fortuneDrops, kind.id);
+    }
+
+    @Test void looseBlocksAreGravelSandAndConcretePowder() {
+        for (Block block : new Block[] {Blocks.GRAVEL, Blocks.SAND, Blocks.RED_SAND, Blocks.WHITE_CONCRETE_POWDER, Blocks.BLACK_CONCRETE_POWDER})
+            assertTrue(MinerRules.loose(block.defaultBlockState()), block.toString());
+        for (Block block : new Block[] {Blocks.STONE, Blocks.AIR, Blocks.ANVIL, Blocks.DRAGON_EGG, Blocks.POINTED_DRIPSTONE,
+                Blocks.SUSPICIOUS_SAND, Blocks.SUSPICIOUS_GRAVEL, Blocks.SANDSTONE, Blocks.SCAFFOLDING})
+            assertFalse(MinerRules.loose(block.defaultBlockState()), block.toString());
+        World world = new World(Blocks.STONE);
+        for (int i = 1; i <= 4; i++) world.set(ORE.above(i), i % 2 == 0 ? Blocks.SAND : Blocks.GRAVEL);
+        assertEquals(4, MinerRules.looseAbove(world, ORE, 12));
+        assertEquals(3, MinerRules.looseAbove(world, ORE, 2), "Counted up to the limit plus one");
+        assertEquals(0, MinerRules.looseAbove(world, ORE.above(4), 12));
+        world.set(ORE.above(2), Blocks.STONE);
+        assertEquals(1, MinerRules.looseAbove(world, ORE, 12), "Only the stack directly on top falls");
+    }
+
+    @Test void gravelOverATunnelStepIsClearedUnlessUnsafe() {
+        BlockPos feet = new BlockPos(0, 10, 0);
+        var step = MinerRules.tunnelStep(feet, new BlockPos(5, 10, 0));
+        BlockPos head = step.feet().above();
+        World column = new World(Blocks.STONE);
+        for (int i = 1; i <= 3; i++) column.set(head.above(i), Blocks.GRAVEL);
+        assertNull(MinerRules.stepHazard(column, step, feet), "A short gravel column is fine");
+        assertNull(MinerRules.stepHazard(new World(Blocks.STONE).set(head, Blocks.GRAVEL).set(step.feet(), Blocks.SAND), step, feet),
+                "Gravel and sand in the step itself are broken");
+        // Fluid next to any falling block.
+        World wet = new World(Blocks.STONE);
+        for (int i = 1; i <= 3; i++) wet.set(head.above(i), Blocks.GRAVEL);
+        wet.set(head.above(3).north(), Blocks.WATER);
+        assertEquals("lava or water by the gravel", MinerRules.stepHazard(wet, step, feet));
+        assertNull(MinerRules.stepHazard(wet.set(head.above(3), Blocks.STONE).set(head.above(3).north(), Blocks.STONE)
+                .set(head.above(4).north(), Blocks.LAVA), step, feet), "Lava beside stone above the stack is not touching it");
+        // Too tall a stack, exactly at the limit, and another kind of falling block on top.
+        World tall = new World(Blocks.STONE);
+        for (int i = 1; i <= MinerRules.MAX_FALLEN + 1; i++) tall.set(head.above(i), Blocks.SAND);
+        assertEquals("too much gravel or sand overhead", MinerRules.stepHazard(tall, step, feet));
+        tall.set(head.above(MinerRules.MAX_FALLEN + 1), Blocks.STONE);
+        assertNull(MinerRules.stepHazard(tall, step, feet), "Exactly the limit is still cleared");
+        World anvil = new World(Blocks.STONE).set(head.above(), Blocks.GRAVEL).set(head.above(2), Blocks.ANVIL);
+        assertEquals("falling blocks overhead", MinerRules.stepHazard(anvil, step, feet));
+        assertEquals("falling blocks overhead", MinerRules.stepHazard(new World(Blocks.STONE).set(head.above(), Blocks.POINTED_DRIPSTONE), step, feet));
+        assertEquals("an unbreakable block ahead", MinerRules.stepHazard(new World(Blocks.STONE).set(head, Blocks.SUSPICIOUS_GRAVEL), step, feet));
+    }
+
+    @Test void gravelNeverFallsIntoThePlayersColumn() {
+        BlockPos feet = new BlockPos(0, 10, 0);
+        var up = MinerRules.tunnelStep(feet, new BlockPos(5, 15, 0)); // Clears the jump headroom over the player first.
+        assertEquals(feet.above(2), up.clear().getFirst());
+        World over = new World(Blocks.STONE).set(feet.above(3), Blocks.GRAVEL);
+        assertEquals("gravel or sand would fall on you", MinerRules.stepHazard(over, up, feet));
+        assertNull(MinerRules.stepHazard(over, up), "Without the player's position only the block rules apply");
+        assertEquals("gravel or sand would fall on you", MinerRules.stepHazard(new World(Blocks.STONE).set(feet.above(2), Blocks.SAND), up, feet),
+                "Sand in the headroom cell itself would drop onto the player");
+        World side = new World(Blocks.STONE).set(up.feet().above(2), Blocks.GRAVEL);
+        assertNull(MinerRules.stepHazard(side, up, feet), "Gravel over the next cell falls beside the player, not on them");
+        // Both columns of a rising step count toward one limit.
+        World both = new World(Blocks.STONE);
+        for (int i = 1; i <= 6; i++) both.set(feet.above(2 + i), Blocks.GRAVEL);
+        for (int i = 1; i <= 7; i++) both.set(up.feet().above(1 + i), Blocks.GRAVEL);
+        assertEquals("too much gravel or sand overhead", MinerRules.stepHazard(both, up));
+        // Player box against a column.
+        var box = new net.minecraft.world.phys.AABB(0.7, 10, 0.2, 1.3, 11.8, 0.8);
+        assertTrue(MinerRules.inColumn(box, new BlockPos(1, 12, 0)));
+        assertTrue(MinerRules.inColumn(box, new BlockPos(0, 40, 0)));
+        assertFalse(MinerRules.inColumn(box, new BlockPos(2, 11, 0)));
+        assertFalse(MinerRules.inColumn(box, new BlockPos(1, 11, 1)));
+    }
+
+    @Test void looseBlocksOverOpenCellsAreUnsettled() {
+        BlockPos feet = new BlockPos(0, 10, 0);
+        var step = MinerRules.tunnelStep(feet, new BlockPos(5, 10, 0));
+        BlockPos head = step.feet().above();
+        assertFalse(MinerRules.unsettled(new World(Blocks.STONE).set(head.above(), Blocks.GRAVEL), step), "Still resting on the stone");
+        World falling = new World(Blocks.STONE).set(head, Blocks.AIR).set(head.above(), Blocks.GRAVEL);
+        assertTrue(MinerRules.unsettled(falling, step), "Gravel over a cleared cell is about to fall");
+        assertTrue(MinerRules.unsettled(new World(Blocks.STONE).set(head, Blocks.SAND).set(step.feet(), Blocks.AIR), step),
+                "Sand in the head cell over a cleared feet cell");
+        World landed = new World(Blocks.STONE).set(head, Blocks.GRAVEL).set(step.feet(), Blocks.GRAVEL).set(head.above(), Blocks.AIR);
+        assertFalse(MinerRules.unsettled(landed, step), "Landed blocks are settled; they are simply mined");
+        assertFalse(MinerRules.unsettled(new World(Blocks.AIR).set(head.above(), Blocks.STONE), step));
+    }
+
+    @Test void standingSpotsAvoidLooseBlocksOverhead() {
+        BlockPos feet = new BlockPos(0, 10, 0);
+        World room = new World(Blocks.STONE).set(feet, Blocks.AIR).set(feet.above(), Blocks.AIR);
+        assertNull(MinerRules.standHazard(room, feet));
+        assertEquals("gravel or sand overhead", MinerRules.standHazard(room.set(feet.above(2), Blocks.GRAVEL), feet));
+        assertNull(MinerRules.standHazard(room.set(feet.above(2), Blocks.STONE).set(feet.above(3), Blocks.SAND), feet),
+                "Sand resting on the ceiling stays put");
     }
 }

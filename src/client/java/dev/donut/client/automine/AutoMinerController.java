@@ -47,6 +47,11 @@ public final class AutoMinerController {
     private static final int RESCAN_DELAY_TICKS = 40;
     /** Longest time spent walking to drops after a break, and how long to wait for them to appear. */
     public static final int COLLECT_TICKS = 100, DROP_WAIT_TICKS = 15;
+    /**
+     * Gravel and sand: after anything fell (or was about to), the tunnel must stay quiet this long before the miner
+     * breaks the next block or steps in; it gives up when blocks keep falling for {@code SETTLE_LIMIT_TICKS}.
+     */
+    public static final int SETTLE_TICKS = 6, SETTLE_LIMIT_TICKS = 80;
     private static AutoMinerController instance;
 
     private final ClientConfig config;
@@ -66,6 +71,14 @@ public final class AutoMinerController {
     private long manualUntil = -1;
     private MinerRules.Step step;
     private int tunnelDug;
+    /** Tunnel cells already broken for this target, and how many blocks fell back into them (gravel, sand). */
+    private final java.util.Set<BlockPos> dugCells = new java.util.HashSet<>();
+    private int fallen, fallenTotal;
+    private long lastFall = Long.MIN_VALUE / 2;
+    private int settleWait;
+    private boolean settling;
+    /** Falling-block entities near the player this tick (their block positions). */
+    private List<BlockPos> fallingBlocks = List.of();
     private int stuck;
     private BlockPos breaking;
     private long breakStart;
@@ -112,6 +125,8 @@ public final class AutoMinerController {
     public String rejectReason(BlockPos pos) { return rejectReasons.get(pos); }
     public boolean drivingInput(Minecraft client) { return navigator.holding(client); }
     public int pendingChunks() { return scanner.pendingChunks(); }
+    /** Blocks that fell into a tunnel and were cleared again (gravel, sand), this session. */
+    public int fallenCleared() { return fallenTotal; }
 
     /** True for a few seconds after the miner stopped itself, so the HUD can say why. */
     public boolean showStopNotice() { return state == State.OFF && lastStop != null && tick - lastStopTick < STOP_NOTICE_TICKS; }
@@ -133,6 +148,7 @@ public final class AutoMinerController {
         if (!player.isAlive() || player.isDeadOrDying()) { stop(client, "you died"); return; }
         if (player.getInventory().getFreeSlot() < 0) { stop(client, "inventory full"); return; }
         navigator.setTurnLimit((float) settings.turnSpeed);
+        fallingBlocks = fallingBlocks(client);
 
         String pause = pauseReason(client);
         if (pause != null) { pause(client, pause); return; }
@@ -190,6 +206,7 @@ public final class AutoMinerController {
         session = client.level;
         originalSlot = client.player.getInventory().getSelectedSlot();
         mined = 0;
+        fallenTotal = 0;
         lastSkip = null;
         lastStop = null;
         state = State.SEARCHING;
@@ -282,7 +299,8 @@ public final class AutoMinerController {
             return;
         }
         MinerRules.View view = view(client.level);
-        var result = navigator.moveTo(client, target, cell -> !MinerRules.standsOn(cell, target) && MinerRules.standHazard(view, cell) == null);
+        var result = navigator.moveTo(client, target, cell -> !MinerRules.standsOn(cell, target) && MinerRules.standHazard(view, cell) == null
+                && !fallingOver(cell));
         switch (result) {
             case ARRIVED -> state = State.MINING;
             case NO_PATH -> {
@@ -315,6 +333,7 @@ public final class AutoMinerController {
     }
 
     private void tunnel(Minecraft client) {
+        settling = false;
         if (!stillTarget(client)) return;
         LocalPlayer player = client.player;
         if (tunnelDug >= config.autoMiner.tunnelLimit) { rejectTarget("tunnel limit reached"); return; }
@@ -326,17 +345,36 @@ public final class AutoMinerController {
         }
         MinerRules.View view = view(client.level);
         if (step == null) step = MinerRules.tunnelStep(player.blockPosition(), target);
-        // Re-checked every tick: fluids can flow in while digging.
-        String hazard = MinerRules.stepHazard(view, step);
+        // Re-checked every tick: fluids can flow in and gravel can fall in while digging.
+        String hazard = MinerRules.stepHazard(view, step, player.blockPosition());
         if (hazard != null) { rejectTarget(hazard); return; }
+        // Gravel and sand: wait (without breaking or moving) until nothing is falling into the step, then for a few
+        // quiet ticks more, and only then mine what landed or step in.
+        boolean falling = fallingInto(step) || MinerRules.unsettled(view, step);
+        if (falling) lastFall = tick;
+        if (falling || tick - lastFall < SETTLE_TICKS) {
+            settling = true;
+            navigator.hold(client, false);
+            abortBreak(client);
+            if (falling && ++settleWait > SETTLE_LIMIT_TICKS) rejectTarget("falling blocks did not settle");
+            return;
+        }
+        settleWait = 0;
         for (BlockPos pos : step.clear()) {
             BlockState state = client.level.getBlockState(pos);
             if (state.getCollisionShape(client.level, pos).isEmpty()) continue;
             if (MinerRules.standsOn(player.blockPosition(), pos)) { rejectTarget("would dig straight down"); return; }
+            boolean loadAbove = MinerRules.looseAbove(view, pos, 0) > 0;
+            // Whatever is stacked on this block drops into its column: never with the player's body in it.
+            if (loadAbove && MinerRules.inColumn(player.getBoundingBox(), pos)) { rejectTarget("gravel or sand would fall on you"); return; }
+            boolean refill = dugCells.contains(pos);
+            if (refill && fallen >= MinerRules.MAX_FALLEN) { rejectTarget("too much gravel or sand"); return; }
             navigator.hold(client, false);
             switch (breakBlock(client, pos)) {
                 case DONE -> {
-                    tunnelDug++;
+                    if (refill) { fallen++; fallenTotal++; }
+                    else { tunnelDug++; dugCells.add(pos.immutable()); }
+                    if (loadAbove) lastFall = tick;
                     if (pos.equals(target)) { mined++; clearTarget(); beginCollect(client, pos); }
                 }
                 case NO_TOOL -> rejectTarget("no tool for the tunnel");
@@ -350,6 +388,29 @@ public final class AutoMinerController {
             case NO_PATH, STUCK -> rejectTarget("cannot enter the tunnel");
             default -> { }
         }
+    }
+
+    /** Falling-block entities near the player, as block positions. */
+    private static List<BlockPos> fallingBlocks(Minecraft client) {
+        var entities = client.level.getEntitiesOfClass(net.minecraft.world.entity.item.FallingBlockEntity.class,
+                client.player.getBoundingBox().inflate(24, 48, 24), net.minecraft.world.entity.Entity::isAlive);
+        if (entities.isEmpty()) return List.of();
+        List<BlockPos> positions = new ArrayList<>(entities.size());
+        for (var entity : entities) positions.add(entity.blockPosition());
+        return positions;
+    }
+
+    /** A falling block is somewhere above this cell, in its column. */
+    private boolean fallingOver(BlockPos cell) {
+        for (BlockPos pos : fallingBlocks)
+            if (pos.getX() == cell.getX() && pos.getZ() == cell.getZ() && pos.getY() >= cell.getY()) return true;
+        return false;
+    }
+
+    /** A falling block is above any cell of the step, or above the player's own column. */
+    private boolean fallingInto(MinerRules.Step step) {
+        for (BlockPos pos : step.clear()) if (fallingOver(pos)) return true;
+        return fallingOver(step.feet()) || fallingOver(Minecraft.getInstance().player.blockPosition());
     }
 
     /** False (and back to searching) when the target is gone or no longer valid. */
@@ -495,7 +556,8 @@ public final class AutoMinerController {
         BlockPos cell = item.blockPosition();
         MinerRules.View view = view(client.level);
         var box = item.getBoundingBox();
-        var result = navigator.walkTo(client, cell, at -> MinerRules.standHazard(view, at) == null && MinerRules.reachesItem(at, box));
+        var result = navigator.walkTo(client, cell, at -> MinerRules.standHazard(view, at) == null && !fallingOver(at)
+                && MinerRules.reachesItem(at, box));
         if (result == BuilderNavigator.Result.NO_PATH || result == BuilderNavigator.Result.STUCK) skippedItems.add(item.getId());
     }
 
@@ -540,6 +602,11 @@ public final class AutoMinerController {
         stuck = 0;
         tunnelDug = 0;
         blockedAt = null;
+        dugCells.clear();
+        fallen = 0;
+        settleWait = 0;
+        settling = false;
+        lastFall = Long.MIN_VALUE / 2;
     }
 
     /** One short status line for the HUD. */
@@ -552,6 +619,7 @@ public final class AutoMinerController {
         int distance = target == null || client.player == null ? 0
                 : (int) Math.round(Math.sqrt(Vec3.atCenterOf(target).distanceToSqr(client.player.getEyePosition())));
         if (state == State.COLLECTING) return "Auto Miner: picking up drops";
+        if (state == State.TUNNELING && settling) return "Auto Miner: waiting for falling blocks";
         String verb = switch (state) { case WALKING -> "walking to"; case TUNNELING -> "tunneling to"; default -> "mining"; };
         return "Auto Miner: " + verb + " " + what + " " + distance + "m";
     }
