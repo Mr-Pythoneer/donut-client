@@ -46,6 +46,38 @@ final class GuiTestInput {
         context.waitTick();
     }
 
+    /** Window coordinates of a control's centre, or null when it isn't on screen (used by the demo reel). */
+    static double[] windowCenter(ClientGameTestContext context, String id) {
+        return context.computeOnClient(client -> {
+            if (!(client.screen instanceof DonutScreen screen)) return null;
+            Bounds hit = find(screen, id);
+            return hit == null ? null : windowPosition(screen, hit.x + hit.w / 2, hit.y + hit.h / 2, client.getWindow().getGuiScale());
+        });
+    }
+
+    /** Window coordinates of the middle of the module list (or of the inspector), for scrolling it. */
+    static double[] areaCenter(ClientGameTestContext context, boolean inspector) {
+        return context.computeOnClient(client -> {
+            DonutScreen screen = screen(client.screen);
+            double x = number(screen, inspector ? "detailX" : "CX") + number(screen, inspector ? "detailW" : "CW") / 2;
+            double y = (number(screen, inspector ? "detailTop" : "TOP") + number(screen, inspector ? "detailBottom" : "BOTTOM")) / 2;
+            return windowPosition(screen, x, y, client.getWindow().getGuiScale());
+        });
+    }
+
+    /** True when the control is on screen and, for module tiles, not clipped. */
+    static boolean shown(ClientGameTestContext context, String id) { return fullyVisible(context, id); }
+
+    /** Clicks a visible control through the screen's real handler without waiting for animations. */
+    static void clickNow(ClientGameTestContext context, String id) {
+        context.runOnClient(client -> {
+            DonutScreen screen = screen(client.screen);
+            Bounds hit = find(screen, id);
+            require(hit != null, "Control not visible: " + id);
+            clickLocal(screen, hit.x + hit.w / 2, hit.y + hit.h / 2, 0);
+        });
+    }
+
     static void type(ClientGameTestContext context, String value) {
         context.runOnClient(client -> value.codePoints().forEach(codepoint -> require(
                 screen(client.screen).charTyped(new CharacterEvent(codepoint, 0)), "GUI did not consume text")));

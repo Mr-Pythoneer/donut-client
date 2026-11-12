@@ -10,3 +10,6 @@ docs/screenshots/
 *.log
 hs_err_pid*
 replay_pid*
+
+# Recorded demo video (developer tool output)
+/demo/

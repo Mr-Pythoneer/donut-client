@@ -24,27 +24,9 @@ public final class TestingGroundsBuilder implements FabricClientGameTest {
 
     @Override public void runTest(ClientGameTestContext context) {
         Path target = Path.of(System.getProperty("donut.testingGrounds.target", "../../../run/saves/" + FOLDER)).toAbsolutePath().normalize();
-        try (var world = context.worldBuilder().adjustSettings(creator -> {
-            creator.setName("Donut Testing Grounds");
-            creator.setAllowCommands(true);
-            creator.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE);
-            creator.setDifficulty(Difficulty.PEACEFUL);
-        }).create()) {
+        try (var world = context.worldBuilder().adjustSettings(TestingGroundsBuilder::settings).create()) {
             TestServerContext server = world.getServer();
-            run(server, "gamerule advance_time false", "gamerule advance_weather false", "gamerule spawn_mobs false",
-                    "gamerule spawn_monsters false", "gamerule keep_inventory true", "gamerule spawn_phantoms false",
-                    "time set noon", "weather clear", "setworldspawn 0 " + Y + " 0");
-            // Keep every area loaded while building; fill/setblock fail in unloaded chunks.
-            run(server, "forceload add -64 -176 80 64");
-            context.waitTicks(40);
-            hub(server);
-            storage(server);
-            freecam(server);
-            durability(server);
-            ores(server);
-            portalAndZoom(server);
-            run(server, "forceload remove all", "tp @a 0.5 " + Y + " 2.5 180 15", "gamemode creative @a");
-            context.waitTicks(20);
+            build(context, server);
             // The integrated server has no save-all command: flush every chunk and the player data directly.
             server.runOnServer(mc -> mc.saveEverything(false, true, true));
             context.waitTicks(10);
@@ -54,6 +36,32 @@ public final class TestingGroundsBuilder implements FabricClientGameTest {
         } catch (IOException error) {
             throw new AssertionError(error);
         }
+    }
+
+    /** Builds every area in the current world (also used by the demo reel). Leaves the player at the hub in Creative. */
+    static void build(ClientGameTestContext context, TestServerContext server) {
+        run(server, "gamerule advance_time false", "gamerule advance_weather false", "gamerule spawn_mobs false",
+                "gamerule spawn_monsters false", "gamerule keep_inventory true", "gamerule spawn_phantoms false",
+                "time set noon", "weather clear", "setworldspawn 0 " + Y + " 0");
+        // Keep every area loaded while building; fill/setblock fail in unloaded chunks.
+        run(server, "forceload add -64 -176 80 64");
+        context.waitTicks(40);
+        hub(server);
+        storage(server);
+        freecam(server);
+        durability(server);
+        ores(server);
+        portalAndZoom(server);
+        run(server, "forceload remove all", "tp @a 0.5 " + Y + " 2.5 180 15", "gamemode creative @a");
+        context.waitTicks(20);
+    }
+
+    /** World settings shared with the demo reel. */
+    static void settings(net.minecraft.client.gui.screens.worldselection.WorldCreationUiState creator) {
+        creator.setName("Donut Testing Grounds");
+        creator.setAllowCommands(true);
+        creator.setGameMode(WorldCreationUiState.SelectedGameMode.CREATIVE);
+        creator.setDifficulty(Difficulty.PEACEFUL);
     }
 
     private static void hub(TestServerContext s) {
@@ -149,7 +157,7 @@ public final class TestingGroundsBuilder implements FabricClientGameTest {
     }
 
     /** Commands that fail only log; a missing decoration must not stop the build. */
-    private static void run(TestServerContext server, String... commands) {
+    static void run(TestServerContext server, String... commands) {
         for (String command : commands) {
             try { server.runCommand(command); }
             catch (Throwable error) { System.out.println("[TestingGrounds] Command failed: " + command + " (" + error.getMessage() + ")"); }

@@ -45,6 +45,7 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
     inputs.property('qolTestsOnly', providers.gradleProperty('qolTestsOnly').orElse('false'))
     inputs.property('testingGroundsOnly', providers.gradleProperty('testingGroundsOnly').orElse('false'))
     inputs.property('uiPreviewOnly', providers.gradleProperty('uiPreviewOnly').orElse('false'))
+    inputs.property('demoReelOnly', providers.gradleProperty('demoReelOnly').orElse('false'))
     inputs.property('gametestSkip', providers.gradleProperty('gametestSkip').orElse(''))
     inputs.property('autoMinerTestsOnly', providers.gradleProperty('autoMinerTestsOnly').orElse('false'))
     doLast {
@@ -57,6 +58,13 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
                 !skip.any { entry.endsWith('.' + it) } }
             manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
         }
+        // Developer tool: records demo/donut-client-demo.mp4 (needs ffmpeg). Not a test.
+        if (providers.gradleProperty('demoReelOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = ['dev.donut.client.gametest.DemoReelGameTest']
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        } else
         // Developer tool: screenshots of the HUD panels and click GUI for visual review. Not a test.
         if (providers.gradleProperty('uiPreviewOnly').orElse('false').get() == 'true') {
             def manifest = new File(destinationDir, 'fabric.mod.json')
