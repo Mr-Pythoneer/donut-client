@@ -26,10 +26,13 @@ public final class HudWidgetsHud {
     private static final EquipmentSlot[] ARMOUR = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
     /** Panels drawn last frame, by kind and anchor, e.g. "stats@TOP_RIGHT"; read by tests. */
     private static volatile List<String> lastDrawn = List.of();
+    /** {@link System#nanoTime()} of the last frame that drew any widget panel. */
+    private static volatile long lastDrawNanos;
 
     private HudWidgetsHud() { }
 
     public static List<String> lastDrawn() { return lastDrawn; }
+    public static long lastDrawNanos() { return lastDrawNanos; }
 
     public static HudPanel.Anchor anchor(String corner) {
         return switch (corner) {
@@ -65,6 +68,7 @@ public final class HudWidgetsHud {
                 drawn.add("keystrokes@" + anchor);
         }
         lastDrawn = List.copyOf(drawn);
+        if (!drawn.isEmpty()) lastDrawNanos = System.nanoTime();
     }
 
     private static boolean on(HudWidgetsSettings settings, HudWidget widget, String corner) {

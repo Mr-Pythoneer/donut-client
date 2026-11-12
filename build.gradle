@@ -43,6 +43,7 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
     inputs.property('freecamTestsOnly', providers.gradleProperty('freecamTestsOnly').orElse('false'))
     inputs.property('storageEspTestsOnly', providers.gradleProperty('storageEspTestsOnly').orElse('false'))
     inputs.property('qolTestsOnly', providers.gradleProperty('qolTestsOnly').orElse('false'))
+    inputs.property('newToolsCTestsOnly', providers.gradleProperty('newToolsCTestsOnly').orElse('false'))
     inputs.property('testingGroundsOnly', providers.gradleProperty('testingGroundsOnly').orElse('false'))
     inputs.property('uiPreviewOnly', providers.gradleProperty('uiPreviewOnly').orElse('false'))
     inputs.property('demoReelOnly', providers.gradleProperty('demoReelOnly').orElse('false'))
@@ -99,6 +100,18 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
             data.entrypoints['fabric-client-gametest'] = [
                 'dev.donut.client.gametest.AutoMinerGameTest',
                 'dev.donut.client.gametest.AutoMinerGuiGameTest',
+                'dev.donut.client.gametest.ModuleKeybindGameTest'
+            ]
+            manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))
+        } else
+        if (providers.gradleProperty('newToolsCTestsOnly').orElse('false').get() == 'true') {
+            def manifest = new File(destinationDir, 'fabric.mod.json')
+            def data = new groovy.json.JsonSlurper().parse(manifest)
+            data.entrypoints['fabric-client-gametest'] = [
+                'dev.donut.client.gametest.HudWidgetsGameTest',
+                'dev.donut.client.gametest.NewChunksGameTest',
+                'dev.donut.client.gametest.StashFinderGameTest',
+                'dev.donut.client.gametest.NewToolsCGuiGameTest',
                 'dev.donut.client.gametest.ModuleKeybindGameTest'
             ]
             manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))

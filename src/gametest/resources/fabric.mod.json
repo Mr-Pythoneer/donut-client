@@ -4,12 +4,18 @@
   "version": "1.0.0",
   "name": "Donut Client Runtime Tests",
   "environment": "client",
-  "mixins": ["donut.gametest.mixins.json"],
+  "mixins": [
+    "donut.gametest.mixins.json"
+  ],
   "entrypoints": {
     "fabric-client-gametest": [
       "dev.donut.client.gametest.FreelookGameTest",
       "dev.donut.client.gametest.AutoEatGameTest",
       "dev.donut.client.gametest.AutoReconnectGameTest",
+      "dev.donut.client.gametest.HudWidgetsGameTest",
+      "dev.donut.client.gametest.NewChunksGameTest",
+      "dev.donut.client.gametest.StashFinderGameTest",
+      "dev.donut.client.gametest.NewToolsCGuiGameTest",
       "dev.donut.client.gametest.NewToolsGuiGameTest",
       "dev.donut.client.gametest.QualityOfLifeGameTest",
       "dev.donut.client.gametest.QualityOfLifeGuiGameTest",

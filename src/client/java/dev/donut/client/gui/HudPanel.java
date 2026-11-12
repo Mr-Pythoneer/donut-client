@@ -30,7 +30,15 @@ public final class HudPanel {
 
     private static float topLeft = -1, bottomLeft = -1, bottomRight = -1, topRight = -1;
     /** Bottom edge (framebuffer pixels) of what already occupies the top-right corner this frame. */
-    private static float topRightFloor;
+    private static float topRightFloor, lastTopRightFloor;
+    /** Where panels landed this frame and last frame (framebuffer pixels); read by layout tests. */
+    public record Placed(Anchor anchor, float x, float y, float w, float h) {
+        public boolean overlaps(Placed other) {
+            return x < other.x + other.w && other.x < x + w && y < other.y + other.h && other.y < y + h;
+        }
+    }
+    private static final List<Placed> placed = new ArrayList<>();
+    private static List<Placed> lastPlaced = List.of();
 
     private final String title, titleValue;
     private final List<Row> rows = new ArrayList<>();
@@ -52,9 +60,17 @@ public final class HudPanel {
 
     /** Reset corner stacking. Called once per frame before any Donut panel draws. */
     public static void newFrame() {
+        lastPlaced = List.copyOf(placed);
+        placed.clear();
+        lastTopRightFloor = topRightFloor;
         topLeft = bottomLeft = bottomRight = topRight = -1;
         topRightFloor = vanillaEffectsBottom();
     }
+
+    public static List<Placed> lastFrame() { return lastPlaced; }
+
+    /** Bottom of the module list / vanilla effect icons last frame; TOP_RIGHT panels start below it. */
+    public static float lastTopRightFloor() { return lastTopRightFloor; }
 
     /** The module list reports its bottom edge here so {@link Anchor#TOP_RIGHT} panels start below it. */
     public static void reserveTopRight(float bottom) { topRightFloor = Math.max(topRightFloor, bottom); }
@@ -168,6 +184,7 @@ public final class HudPanel {
             float h = (float) Math.ceil(PAD_Y * 2 * s + titleH + perColumn * ROW * s + contentH + footerH + progressH);
             float[] at = place(anchor, w, h, s, guiScale, windowW, windowH);
             float x = at[0], y = at[1];
+            if (placed.size() < 256) placed.add(new Placed(anchor, x, y, w, h));
 
             UiPaint.round(g, x, y, w, h, RADIUS * s, SURFACE);
             outline(g, x, y, w, h, s);

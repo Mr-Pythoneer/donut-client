@@ -36,7 +36,7 @@ public final class StashEntry {
             int count = count(kind);
             if (count == 0) continue;
             if (!out.isEmpty()) out.append(", ");
-            out.append(count).append(' ').append(kind.shortLabel().toLowerCase(java.util.Locale.ROOT));
+            out.append(count).append(' ').append((count == 1 ? kind.singular : kind.shortLabel()).toLowerCase(java.util.Locale.ROOT));
         }
         return out.isEmpty() ? "no storage" : out.toString();
     }
