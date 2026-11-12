@@ -8,6 +8,22 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-11 (Auto Miner enchantment-aware tools, gravel and sand)
+
+- `build --no-daemon` passed with **238 unit tests**, 0 failures. New and changed in `AutoMinerRulesTest` / `AutoMinerVariantsTest`:
+  - Efficiency adds level squared + 1, only when the base speed is above 1, and tool choice uses it (Efficiency V iron beats a plain diamond pickaxe; equal speeds keep the held slot);
+  - the Fortune rule comes after Silk Touch and before speed, picks the highest level, also applies when Silk Touch is wanted but missing, skips protected and non-harvesting tools, and is off with Prefer Fortune off; the older six-argument `chooseTool` is unchanged;
+  - every ore but ancient debris counts as a Fortune ore; Prefer Fortune defaults on, persists, and older files get the default;
+  - loose blocks are gravel, sand, red sand and concrete powder (not anvils, dragon eggs, dripstone or suspicious sand/gravel); stack counting;
+  - tunnel steps with gravel above or in them are allowed, but not next to lava or water, over 12 high (exactly 12 is allowed), with an anvil or dripstone on top, or over the player's own column; both columns of a rising step count toward one limit;
+  - "unsettled" (gravel over an open cell of the step) versus landed blocks, and standing spots refuse gravel or sand right overhead. The old "gravel above the step is skipped" assertion now expects the step to be allowed.
+- `runClientGameTest -PautoMinerTestsOnly=true --no-daemon` passed AutoMinerGameTest, AutoMinerGuiGameTest and ModuleKeybindGameTest. New checks:
+  - with a Fortune III and an Efficiency V diamond pickaxe in the hotbar, a stone diamond ore is mined with the Fortune one, and ancient debris with the Efficiency one;
+  - a buried diamond ore in a stone hill with three gravel over the tunnel path: it tunnels in, clears the gravel that falls into the step (at least one fallen block cleared, falling blocks were seen), mines the ore, leaves no gravel in that column, and the player was never under a falling block, never inside a block and never hurt (screenshot `auto-miner-04-gravel`);
+  - the GUI suite toggles Prefer Fortune in the Tools section and checks it persists (screenshot `auto-miner-gui-01-settings`).
+- The first two game-test runs failed on the new test setup, not the miner: scenario 5 counted ores mined by a run that hadn't stopped yet, and then the half-mined debris left over from scenario 2. Both were fixed in the test before the passing run.
+- Not tested: sand or concrete powder in game (only gravel), gravel next to fluids in game (unit tests only), rising steps under gravel in game, and Prefer Fortune off in game (unit tests only).
+
 ## Verified on 2026-11-11 (waypoint world keys, label view bobbing, profile names)
 
 - `build --no-daemon` passed with **241 unit tests**. New or extended:
