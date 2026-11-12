@@ -105,6 +105,11 @@ public final class DonutScreen extends Screen {
     private String rowPrefix = "";
     private int settingsCursor;
     private String soundStatus = "Capture received activity. Range does not request distant sounds.";
+    // Inline list-entry fields (Search block IDs, Player ESP friends): the focused field id, drafts and feedback.
+    private String entryFocus;
+    private final Map<String, String> entryDrafts = new HashMap<>();
+    private final Map<String, String> entryMessages = new HashMap<>();
+    private final Map<String, java.util.function.Function<String, String>> entryCommits = new HashMap<>();
 
     public DonutScreen(ClientConfig config, Runnable save) {
         super(Component.literal("Donut Client"));
@@ -280,6 +285,7 @@ public final class DonutScreen extends Screen {
         detailScroll = detailScrollTarget = 0;
         searchFocused = false;
         keyboardFocus = null;
+        entryFocus = null;
         dragging = null;
     }
 
@@ -425,6 +431,7 @@ public final class DonutScreen extends Screen {
         selectedModule = previewModule = index;
         dragging = null;
         keyboardFocus = null;
+        entryFocus = null;
     }
 
     private void drawDetails(GuiGraphics g) {
@@ -484,6 +491,8 @@ public final class DonutScreen extends Screen {
 
     /** With a search query, results come from every category (and match setting names); otherwise the tab filters. */
     private boolean matches(int index) {
+        // Module IDs can have gaps (an ID with no module): those never show a tile or count as a result.
+        if (!ModuleKeybinds.exists(index)) return false;
         if (enabledOnly && !enabled(index)) return false;
         if (!searching() && ((tab == 0 && (index == 3 || index == 6 || index == 20 || index >= 7 && index <= 9))
                 || (tab == 3 && index != 3 && index != 6 && index != 20) || (tab == 4 && (index < 7 || index > 9)))) return false;
@@ -507,6 +516,8 @@ public final class DonutScreen extends Screen {
             case 19 -> "durability alert warning armor tool break damage repair low";
             case 20 -> "auto miner autominer mining mine ore ores diamond iron gold emerald debris tunnel pickaxe automation";
             case 15 -> "storage esp storageesp chest chests double chest trapped barrel shulker ender hopper dropper dispenser furnace smoker blast brewing crafter pot bookshelf minecart boat container stash";
+            case 22 -> "player esp playeresp players entity entities through walls wallhack nametag nametags tracers health armor armour friends mobs animals items";
+            case 23 -> "search block search blockfinder block finder find blocks xray x-ray highlight id spawner ancient debris diamond ore portal";
             default -> "autobuilder auto builder schematic litematic building materials navigation";
         };
         String needle = query.toLowerCase(Locale.ROOT).trim();
@@ -521,7 +532,9 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawModuleSettings(GuiGraphics g, int index) {
-        if (index == 20) drawAutoMinerSettings(g);
+        if (index == 23) drawSearchSettings(g);
+        else if (index == 22) drawPlayerEspSettings(g);
+        else if (index == 20) drawAutoMinerSettings(g);
         else if (index == 19) drawDurabilityAlertSettings(g);
         else if (index == 18) drawZoomSettings(g);
         else if (index == 17) drawWaypointSettings(g);
@@ -686,6 +699,8 @@ public final class DonutScreen extends Screen {
             case 18 -> "Hold a key to zoom your view";
             case 19 -> "Warn before tools and armor break";
             case 20 -> "Walk to and mine chosen ores with vanilla controls";
+            case 22 -> "See loaded players through walls, with nametags";
+            case 23 -> "Highlight any blocks you choose through walls";
             default -> "Move through your world with vanilla flight";
         };
     }
@@ -699,7 +714,7 @@ public final class DonutScreen extends Screen {
             line(g,x+5,y+6,x+10,y+2,tint);line(g,x+10,y+2,x+10,y+17,tint);line(g,x+10,y+17,x+5,y+13,tint);
             line(g,x+13,y+5,x+17,y+8,tint);line(g,x+17,y+8,x+13,y+13,tint);
         } else if (index == 2) camera(g, x, y, tint);
-        else if (index == 3 || index == 4 || index == 13 || index == 15) cube(g, x, y, 12, tint, .85, .14);
+        else if (index == 3 || index == 4 || index == 13 || index == 15 || index == 23) cube(g, x, y, 12, tint, .85, .14);
         else if (index == 5) {
             outline(g, x + 4, y + 4, 9, 9, 4, tint);
             line(g, x + 8, y, x + 8, y + 2, tint);
@@ -730,10 +745,12 @@ public final class DonutScreen extends Screen {
         }
     }
 
-    private boolean enabled(int index) { return index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
-    private boolean favorite(int index) { return index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
+    private boolean enabled(int index) { return index == 23 ? config.search.enabled : index == 22 ? config.playerEsp.enabled : index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
+    private boolean favorite(int index) { return index == 23 ? config.search.favorite : index == 22 ? config.playerEsp.favorite : index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
     private void toggleFavorite(int index) {
-        if (index == 20) config.autoMiner.favorite = !config.autoMiner.favorite;
+        if (index == 23) config.search.favorite = !config.search.favorite;
+        else if (index == 22) config.playerEsp.favorite = !config.playerEsp.favorite;
+        else if (index == 20) config.autoMiner.favorite = !config.autoMiner.favorite;
         else if (index == 19) config.durabilityAlert.favorite = !config.durabilityAlert.favorite;
         else if (index == 18) config.zoom.favorite = !config.zoom.favorite;
         else if (index == 17) config.waypoints.favorite = !config.waypoints.favorite;
@@ -755,7 +772,11 @@ public final class DonutScreen extends Screen {
         if (tab == 1) contentProgress = 0;
     }
     private void toggleEnabled(int index) {
-        if (index == 20) {
+        if (index == 23) {
+            change(() -> config.search.enabled = !config.search.enabled);
+        } else if (index == 22) {
+            change(() -> config.playerEsp.enabled = !config.playerEsp.enabled);
+        } else if (index == 20) {
             change(() -> config.autoMiner.enabled = !config.autoMiner.enabled);
         } else if (index == 19) {
             change(() -> config.durabilityAlert.enabled = !config.durabilityAlert.enabled);
@@ -799,7 +820,7 @@ public final class DonutScreen extends Screen {
         }
     }
     private String name(int index) {
-        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; default -> "AutoBuilder"; };
+        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; case 22 -> "Player ESP"; case 23 -> "Search"; default -> "AutoBuilder"; };
     }
 
     private void drawHotbarSettings(GuiGraphics g, int ignored) {
@@ -1228,6 +1249,192 @@ public final class DonutScreen extends Screen {
         help(g, "Reads only blocks and entities already received. Scans a few chunks per tick and clears on disable, world change and disconnect.");
     }
 
+    private void drawPlayerEspSettings(GuiGraphics g) {
+        var value = config.playerEsp;
+        section(g, "Targets", 0);
+        settingToggle(g, "players", "Players", 0, () -> value.players, () -> value.players = !value.players);
+        settingToggle(g, "hostileMobs", "Hostile mobs", 0, () -> value.hostileMobs, () -> value.hostileMobs = !value.hostileMobs);
+        settingToggle(g, "passiveMobs", "Animals / passive mobs", 0, () -> value.passiveMobs, () -> value.passiveMobs = !value.passiveMobs);
+        settingToggle(g, "items", "Dropped items", 0, () -> value.items, () -> value.items = !value.items);
+        help(g, "Shows only entities your client has already received. Never you, and never someone you are spectating.");
+        section(g, "Boxes and colors", 0);
+        settingToggle(g, "boxes", "Through-wall boxes", 0, () -> value.boxes, () -> value.boxes = !value.boxes);
+        settingToggle(g, "tracers", "Tracers", 0, () -> value.tracers, () -> value.tracers = !value.tracers);
+        settingToggle(g, "colorByDistance", "Color players by distance", 0, () -> value.colorByDistance, () -> value.colorByDistance = !value.colorByDistance);
+        if (!value.colorByDistance) colorRow(g, "Player color", 0, () -> value.playerColor, next -> value.playerColor = next & 0xFFFFFF);
+        settingToggle(g, "teamColors", "Team colors", 0, () -> value.teamColors, () -> value.teamColors = !value.teamColors);
+        colorRow(g, "Friend color", 0, () -> value.friendColor, next -> value.friendColor = next & 0xFFFFFF);
+        if (value.hostileMobs) colorRow(g, "Hostile mob color", 0, () -> value.hostileColor, next -> value.hostileColor = next & 0xFFFFFF);
+        if (value.passiveMobs) colorRow(g, "Animal color", 0, () -> value.passiveColor, next -> value.passiveColor = next & 0xFFFFFF);
+        if (value.items) colorRow(g, "Item color", 0, () -> value.itemColor, next -> value.itemColor = next & 0xFFFFFF);
+        help(g, value.colorByDistance ? "Players go from red when close to green at the edge of the range." : "Players use one fixed color.");
+        section(g, "Nametags", 0);
+        settingToggle(g, "nametags", "Nametags", 0, () -> value.nametags, () -> value.nametags = !value.nametags);
+        if (value.nametags) {
+            settingToggle(g, "showHealth", "Health", 0, () -> value.showHealth, () -> value.showHealth = !value.showHealth);
+            if (value.showHealth) settingToggle(g, "healthAsHearts", "Health in hearts", 0, () -> value.healthAsHearts, () -> value.healthAsHearts = !value.healthAsHearts);
+            settingToggle(g, "showHeldItem", "Held item", 0, () -> value.showHeldItem, () -> value.showHeldItem = !value.showHeldItem);
+            settingToggle(g, "showArmor", "Armor icons", 0, () -> value.showArmor, () -> value.showArmor = !value.showArmor);
+            settingToggle(g, "showDistance", "Distance", 0, () -> value.showDistance, () -> value.showDistance = !value.showDistance);
+        }
+        settingToggle(g, "respectNameHider", "Respect Name Hider", 0, () -> value.respectNameHider, () -> value.respectNameHider = !value.respectNameHider);
+        help(g, "With Name Hider on, tags say Player or Friend instead of real names. Health and equipment come from what the server already sends.");
+        section(g, "Range", 0);
+        slider(g, "range", "Range", 0, () -> value.range, next -> value.range = (int) next,
+                dev.donut.client.config.PlayerEspSettings.MIN_RANGE, dev.donut.client.config.PlayerEspSettings.MAX_RANGE, 8, " blocks");
+        slider(g, "maxShown", "Max shown", 0, () -> value.maxShown, next -> value.maxShown = (int) next,
+                dev.donut.client.config.PlayerEspSettings.MIN_SHOWN, dev.donut.client.config.PlayerEspSettings.MAX_SHOWN, 1, "");
+        slider(g, "opacity", "Opacity", 0, () -> value.opacity, next -> value.opacity = (int) next, 0, 255, 1, "");
+        var controller = dev.donut.client.playeresp.PlayerEspController.get();
+        help(g, !value.enabled || controller == null || minecraft.level == null ? "Enable Player ESP in a world to see loaded players."
+                : controller.total() + " in range" + (controller.total() > controller.targets().size() ? ", nearest " + controller.targets().size() + " shown" : ""));
+        section(g, "Friends", 0);
+        for (int i = 0; i < value.friends.size(); i++) {
+            String friend = value.friends.get(i);
+            listEntryRow(g, "m22.removeFriend" + i, config.nameHider.enabled && value.respectNameHider ? "Friend " + (i + 1) : friend,
+                    null, () -> value.friendColor, null, null, () -> { value.removeFriend(friend); entryMessages.put("m22.friendInput", "Removed."); });
+        }
+        entryField(g, "m22.friendInput", "Username", raw -> value.addFriend(raw) ? "Friend added." : "Already a friend.");
+        button(g, "m22.addFriend", "Add friend", rowX, settingsCursor, rowW, s(34), () -> commitEntry("m22.friendInput"));
+        settingsCursor += s(44);
+        help(g, entryMessages.getOrDefault("m22.friendInput", value.friends.isEmpty()
+                ? "Friends are drawn in the friend color. Names are matched without case."
+                : value.friends.size() + " friends saved."));
+    }
+
+    private void drawSearchSettings(GuiGraphics g) {
+        var value = config.search;
+        section(g, "Blocks", 0);
+        if (value.blocks.isEmpty()) help(g, "No blocks chosen yet. Type a block ID below, such as diamond_ore or spawner, or look at a block and add it.");
+        var scanner = dev.donut.client.search.SearchScanner.get();
+        var snapshot = scanner == null ? null : scanner.snapshot();
+        for (int i = 0; i < value.blocks.size(); i++) {
+            var entry = value.blocks.get(i);
+            String id = entry.id;
+            String detail = id + (value.enabled && snapshot != null ? "  |  " + snapshot.count(id) + " in range" : "");
+            listEntryRow(g, "m23.remove" + i, dev.donut.client.search.SearchBlocks.displayName(id), detail,
+                    () -> value.color(id), "m23.entryColor" + i, next -> { var current = value.find(id); if (current != null) current.color = next & 0xFFFFFF; },
+                    () -> { value.remove(id); entryMessages.put("m23.blockInput", "Removed " + id + "."); });
+        }
+        entryField(g, "m23.blockInput", "Block ID, e.g. diamond_ore", this::addSearchBlock);
+        String draft = entryDrafts.getOrDefault("m23.blockInput", "");
+        if (!draft.isBlank()) {
+            var suggestions = dev.donut.client.search.SearchBlocks.suggestions(draft, 5);
+            for (int i = 0; i < suggestions.size(); i++) {
+                String suggestion = suggestions.get(i);
+                int y = settingsCursor, h = s(26);
+                boolean hovered = inside(rowX, y, rowW, h);
+                if (hovered) round(g, rowX, y, rowW, h, s(5), CONTROL_HOVER);
+                smallText(g, font, ellipsizeSmall(suggestion, rowW - s(16)), rowX + s(8), midSmall(y, h), value.find(suggestion) != null ? DIM : CONTROL_TEXT);
+                hit("m23.suggest" + i, rowX, y, rowW, h, () -> {
+                    entryDrafts.put("m23.blockInput", suggestion);
+                    commitEntry("m23.blockInput");
+                });
+                settingsCursor += h;
+            }
+            settingsCursor += s(6);
+        }
+        button(g, "m23.addBlock", "Add block", rowX, settingsCursor, rowW, s(34), () -> commitEntry("m23.blockInput"));
+        settingsCursor += s(44);
+        button(g, "m23.addLooked", "Add looked-at block", rowX, settingsCursor, rowW, s(34), () -> {
+            if (minecraft.level != null && minecraft.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit
+                    && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+                var block = minecraft.level.getBlockState(hit.getBlockPos()).getBlock();
+                String id = dev.donut.client.search.SearchBlocks.id(block);
+                try { entryMessages.put("m23.blockInput", addSearchBlock(id)); }
+                catch (IllegalArgumentException failure) { entryMessages.put("m23.blockInput", failure.getMessage()); }
+            } else entryMessages.put("m23.blockInput", "Look at a block first, then open this menu.");
+        });
+        settingsCursor += s(44);
+        help(g, entryMessages.getOrDefault("m23.blockInput", "Up to " + dev.donut.client.config.SearchSettings.MAX_BLOCKS
+                + " blocks. Click a color to change it, or Remove to drop a block."));
+        section(g, "Display", 0);
+        slider(g, "range", "Range", 0, () -> value.range, next -> value.range = (int) next,
+                dev.donut.client.config.SearchSettings.MIN_RANGE, dev.donut.client.config.SearchSettings.MAX_RANGE, 16, " blocks");
+        slider(g, "maxResults", "Max results", 0, () -> value.maxResults, next -> value.maxResults = (int) next,
+                dev.donut.client.config.SearchSettings.MIN_RESULTS, dev.donut.client.config.SearchSettings.MAX_RESULTS, 16, "");
+        slider(g, "opacity", "Opacity", 0, () -> value.opacity, next -> value.opacity = (int) next, 0, 255, 1, "");
+        settingToggle(g, "mergeAdjacent", "Merge adjacent blocks", 0, () -> value.mergeAdjacent, () -> value.mergeAdjacent = !value.mergeAdjacent);
+        settingToggle(g, "tracers", "Tracers", 0, () -> value.tracers, () -> value.tracers = !value.tracers);
+        settingToggle(g, "showHud", "Count / nearest HUD", 0, () -> value.showHud, () -> value.showHud = !value.showHud);
+        section(g, "Scan", 0);
+        help(g, !value.enabled || snapshot == null ? "Enable Search in a world to scan loaded chunks."
+                : snapshot.total() + " blocks in range" + (snapshot.limited() ? ", nearest " + value.maxResults + " shown" : "")
+                + (scanner.pendingChunks() > 0 ? " | " + scanner.pendingChunks() + " chunks queued" : ""));
+        button(g, "m23.rescan", "Rescan loaded chunks", rowX, settingsCursor, rowW, s(34), () -> {
+            var current = dev.donut.client.search.SearchScanner.get();
+            if (current != null) current.rescan();
+        });
+        settingsCursor += s(44);
+        help(g, "Reads only blocks already received; the server's view distance is the real limit. On anti-xray servers, hidden ores can be disguised as stone or shown where none exist: only exposed blocks are certain.");
+    }
+
+    /** Adds a typed block ID to Search after registry validation; returns the message to show. */
+    private String addSearchBlock(String raw) {
+        var block = dev.donut.client.search.SearchBlocks.validate(raw);
+        String id = dev.donut.client.search.SearchBlocks.id(block);
+        var value = config.search;
+        if (!value.add(id, value.nextColor())) return id + " is already in the list.";
+        return "Added " + block.getName().getString() + ".";
+    }
+
+    /** A compact list row: optional colour swatch (opens the colour editor), a label with optional detail, and Remove. */
+    private void listEntryRow(GuiGraphics g, String removeId, String label, String detail, IntSupplier color,
+                              String colorId, IntConsumer setColor, Runnable remove) {
+        int y = settingsCursor, h = s(detail == null ? 36 : 44), swatch = s(18);
+        int removeW = WorkspacePaint.smallWidth(font, "Remove") + s(16);
+        int textX = colorId != null ? rowX + swatch + s(10) : rowX + s(14);
+        if (colorId != null) {
+            round(g, rowX, y + (h - swatch) / 2f, swatch, swatch, s(5), alpha(color.getAsInt(), 1));
+            outline(g, rowX, y + (h - swatch) / 2f, swatch, swatch, s(5), alpha(0xFFFFFF, inside(rowX, y, swatch, h) ? .4 : .15));
+            hit(colorId, rowX, y + (h - swatch) / 2, swatch, swatch, () -> {
+                colorEditor = new ColorEditor(label + " color", color, setColor);
+                modalProgress = 0; keyboardFocus = null; scannerMethodMenu = false;
+            });
+        } else round(g, rowX, y + h / 2f - s(3), s(6), s(6), s(3), alpha(color.getAsInt(), 1));
+        int textW = rowX + rowW - removeW - s(8) - textX;
+        if (detail == null) text(g, font, ellipsize(label, textW), textX, mid(y, h), CONTROL_TEXT);
+        else {
+            text(g, font, ellipsize(label, textW), textX, y + s(4), CONTROL_TEXT);
+            smallText(g, font, ellipsizeSmall(detail, textW), textX, y + s(24), DIM);
+        }
+        int bx = rowX + rowW - removeW, by = y + (h - s(24)) / 2;
+        double hover = animate("button" + removeId, inside(bx, by, removeW, s(24)) ? 1 : 0);
+        surface(g, bx, by, removeW, s(24), s(6), blend(CONTROL, CONTROL_HOVER, hover), 0.78f);
+        smallText(g, font, "Remove", bx + s(8), midSmall(by, s(24)), CONTROL_TEXT);
+        hit(removeId, bx, by, removeW, s(24), () -> change(remove));
+        line(g, rowX, y + h - 1, rowX + rowW, y + h - 1, 0x0FFFFFFF);
+        settingsCursor += h;
+    }
+
+    /** An inline text field. Enter (or the module's Add button) runs {@code commit}; it throws to report an error. */
+    private void entryField(GuiGraphics g, String id, String hint, java.util.function.Function<String, String> commit) {
+        entryCommits.put(id, commit);
+        int y = settingsCursor, h = s(32);
+        boolean focused = id.equals(entryFocus);
+        String draft = entryDrafts.getOrDefault(id, "");
+        surface(g, rowX, y, rowW, h, s(7), FIELD, 0.82f);
+        outline(g, rowX, y, rowW, h, s(7), focused ? alpha(config.accentColor, .7) : chromeBorder());
+        String shown = draft.isEmpty() && !focused ? hint : draft + (focused && System.currentTimeMillis() % 1000 < 500 ? "|" : "");
+        while (WorkspacePaint.width(font, shown) > rowW - s(16) && !shown.isEmpty()) shown = removeFirstCharacter(shown);
+        text(g, font, shown, rowX + s(8), mid(y, h), draft.isEmpty() ? CONTROL_MUTED : CONTROL_TEXT);
+        hit(id, rowX, y, rowW, h, () -> { entryFocus = id; searchFocused = false; keyboardFocus = null; });
+        settingsCursor += h + s(8);
+    }
+
+    private void commitEntry(String id) {
+        var commit = entryCommits.get(id);
+        if (commit == null) return;
+        try {
+            entryMessages.put(id, commit.apply(entryDrafts.getOrDefault(id, "")));
+            entryDrafts.put(id, "");
+            dirty = true;
+            flush();
+        } catch (IllegalArgumentException failure) {
+            entryMessages.put(id, failure.getMessage());
+        }
+    }
+
     private void drawLightDebugSettings(GuiGraphics g) {
         var value = config.lightDebug;
         section(g, "Underground light", 0);
@@ -1410,9 +1617,13 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawFooter(GuiGraphics g) {
-        int top = H - 38, height = 38, active = 0;
-        for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT; index++) if (enabled(index)) active++;
-        String status = active + " of " + ModuleKeybinds.MODULE_COUNT + " modules on";
+        int top = H - 38, height = 38, active = 0, modules = 0;
+        for (int index = ModuleKeybinds.FIRST_MODULE; index < ModuleKeybinds.MODULE_LIMIT; index++) {
+            if (!ModuleKeybinds.exists(index)) continue;
+            modules++;
+            if (enabled(index)) active++;
+        }
+        String status = active + " of " + modules + " modules on";
         int statusW = WorkspacePaint.smallWidth(font, status);
         smallText(g, font, status, W - 24 - statusW, midSmall(top, height), DIM);
         String message = binding >= 0 ? "Press a key. Delete clears, Esc cancels." : "";
@@ -1758,6 +1969,7 @@ public final class DonutScreen extends Screen {
         double x = (event.x() - originX) / scale, y = (event.y() - originY) / scale;
         keyboardFocus = null;
         searchFocused = false;
+        entryFocus = null;
         if (colorEditor != null) colorEditor.hexFocused = false;
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit h = hits.get(i);
@@ -1890,6 +2102,19 @@ public final class DonutScreen extends Screen {
                 return true;
             }
         }
+        if (entryFocus != null && colorEditor == null) {
+            String draft = entryDrafts.getOrDefault(entryFocus, "");
+            if (event.key() == GLFW.GLFW_KEY_ESCAPE) { capturedKey = pressed; entryFocus = null; }
+            else if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) commitEntry(entryFocus);
+            else if (event.key() == GLFW.GLFW_KEY_BACKSPACE) entryDrafts.put(entryFocus, removeLastCharacter(draft));
+            else if (event.key() == GLFW.GLFW_KEY_TAB) entryFocus = null;
+            else if (event.key() == GLFW.GLFW_KEY_V && event.hasControlDown()) {
+                String pasted = minecraft.keyboardHandler.getClipboard().strip();
+                if (!pasted.contains("\n")) entryDrafts.put(entryFocus, (draft + pasted).substring(0, Math.min(64, draft.length() + pasted.length())));
+            }
+            // Every other key (including the open-GUI key, e.g. Right Shift for capitals) stays in the field.
+            return true;
+        }
         KeyMapping open = KeyMapping.get("key.donut.open_gui");
         if (open != null && !open.isUnbound() && pressed.equals(InputConstants.getKey(open.saveString()))) {
             onClose();
@@ -1998,6 +2223,11 @@ public final class DonutScreen extends Screen {
                 if (replaceBasesFound) { basesFoundDraft = ""; replaceBasesFound = false; }
                 if (basesFoundDraft.length() < 18) basesFoundDraft += event.codepointAsString();
             }
+            return true;
+        }
+        if (entryFocus != null && colorEditor == null) {
+            String draft = entryDrafts.getOrDefault(entryFocus, "");
+            if (event.isAllowedChatCharacter() && draft.length() < 64) entryDrafts.put(entryFocus, draft + event.codepointAsString());
             return true;
         }
         if (colorEditor != null && colorEditor.hexFocused) {

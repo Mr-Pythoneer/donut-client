@@ -15,7 +15,8 @@ import net.minecraft.client.gui.GuiGraphics;
 /** Spectre's connected, width-sorted module rows bound to Donut's active modules. */
 public final class ModuleArrayList {
     private static final String[] NAMES = {"Freecam", "AutoBuilder", "Base Finder",
-            "Fullbright", "Fly", "Progress Bar", "Name Hider", "Hotbar", "Amethyst Scanner", "Light Debug", "Sound Detector", "BlockESP", "Staff Detector", "Storage ESP", "Coordinates", "Waypoints", "Zoom", "Durability Alert", "Auto Miner"};
+            "Fullbright", "Fly", "Progress Bar", "Name Hider", "Hotbar", "Amethyst Scanner", "Light Debug", "Sound Detector", "BlockESP", "Staff Detector", "Storage ESP", "Coordinates", "Waypoints", "Zoom", "Durability Alert", "Auto Miner",
+            null, "Player ESP", "Search", null, null, null, null, null}; // IDs 21-28; null = no module at that ID.
     private static final float[] animation = new float[NAMES.length];
     private static long lastFrame;
     private static List<Row> rows = List.of();
@@ -39,14 +40,16 @@ public final class ModuleArrayList {
                 AutoBuilderController.get().isRunning(), config.chunkFinder.enabled, config.fullbright.enabled,
                 FlyController.getInstance() != null && FlyController.getInstance().isActive(),
                 config.progressBar.enabled, config.nameHider.enabled, config.hotbar.enabled, config.amethyst.enabled, config.lightDebug.enabled, config.soundDetector.enabled, config.blockEsp.enabled, config.staffDetector.enabled, config.storageEsp.enabled, config.coordinates.enabled, config.waypoints.enabled,
-                config.zoom.enabled, config.durabilityAlert.enabled, config.autoMiner.enabled};
+                config.zoom.enabled, config.durabilityAlert.enabled, config.autoMiner.enabled,
+                false, config.playerEsp.enabled, config.search.enabled, false, false, false, false, false};
         float k = config.clickGuiStyle.animationSpeed == 0 ? 1 : 1 - (float) Math.exp(-12 * dt * config.clickGuiStyle.animationSpeed);
         float previousFontScale = WorkspacePaint.pushScale(s);
         g.pose().pushMatrix();
         try {
             g.pose().scale(1 / guiScale, 1 / guiScale);
             List<Row> ordered = new ArrayList<>();
-            for (int i = 0; i < NAMES.length; i++) {
+            for (int i = 0; i < Math.min(NAMES.length, enabled.length); i++) {
+                if (NAMES[i] == null) continue;
                 float target = enabled[i] ? 1 : 0;
                 animation[i] += (target - animation[i]) * k;
                 if (Math.abs(animation[i] - target) < .005f) animation[i] = target;

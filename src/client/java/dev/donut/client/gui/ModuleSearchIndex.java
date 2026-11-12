@@ -38,6 +38,8 @@ public final class ModuleSearchIndex {
         put(18, "Zoom level", "Smooth transition", "Scroll to adjust while held", "Remember scrolled level", "Lower mouse sensitivity", "Zoom", "Your controls");
         put(19, "Warn at or below", "Include armor", "Include offhand", "Local warning chime", "Warning");
         put(20, "Stone variants", "Deepslate variants", "Silk Touch for deepslate ores", "Silk Touch for stone ores", "Prefer Fortune", "Pick up drops", "Tools", "Include buried ores", "Range", "Tunnel limit", "Pause at health", "Protect low-durability tools", "Tool reserve (uses left)", "Turn speed", "Show HUD", "Ores", "Search", "Safety", "Display");
+        put(22, "Players", "Hostile mobs", "Animals / passive mobs", "Dropped items", "Through-wall boxes", "Tracers", "Color players by distance", "Player color", "Team colors", "Friend color", "Hostile mob color", "Animal color", "Item color", "Nametags", "Health", "Health in hearts", "Held item", "Armor icons", "Distance", "Respect Name Hider", "Range", "Max shown", "Opacity", "Add friend", "Remove", "Targets", "Boxes and colors", "Friends");
+        put(23, "Add block", "Add looked-at block", "Remove", "Range", "Max results", "Opacity", "Merge adjacent blocks", "Tracers", "Count / nearest HUD", "Rescan loaded chunks", "Blocks", "Display", "Scan");
         // Labels generated from enums at runtime in the inspector.
         List<String> storage = new ArrayList<>(SETTINGS.getOrDefault(15, List.of()));
         for (StorageKind kind : StorageKind.values()) { storage.add(kind.label); storage.add(kind.label + " color"); }
