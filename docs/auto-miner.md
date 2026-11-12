@@ -2,7 +2,7 @@
 
 Auto Miner looks for ores near you, walks to them and mines them the way you would: it turns your view toward the block, picks the best pickaxe in your hotbar, and holds the break at normal speed and normal reach. It starts **disabled** and never switches itself back on: it is cleared when Minecraft starts and whenever it stops (disconnect, death, dimension change, full inventory).
 
-Turn it on and off with **Toggle Auto Miner** under Minecraft's **Controls** (unbound by default). A click-GUI page is planned; until then the settings live in `config/donut-client.json` under `autoMiner`.
+It's in the click GUI under **Blatant** (Right Shift → Auto Miner). The module switch turns it on, and its inspector holds the ore list and every setting below, plus a keybind (unbound by default; also under Minecraft's **Controls** as **Toggle Auto Miner**). Search finds it by ore names and setting names, e.g. "tunnel" or "ancient".
 
 ## Read this first
 
@@ -73,7 +73,7 @@ Areas at the edge of loaded chunks count as unsafe.
 
 ## HUD
 
-Two lines at the top centre: what it is doing (for example "Auto Miner: mining Diamond ore 4m" or "Auto Miner paused: menu open"), then the number mined this session and the last skipped target. After it stops itself, the reason shows for about five seconds. The HUD hides with Donut's HUD toggle, F1 and open menus.
+A small panel in the top-left stack, in the same style as Donut's other panels: what it is doing (for example "Mining Diamond ore 4m" or "Paused: menu open"), then the number mined this session and the last skipped target. After it stops itself, the reason shows for about five seconds. The HUD hides with Donut's HUD toggle, F1 and open menus.
 
 ## Limits
 

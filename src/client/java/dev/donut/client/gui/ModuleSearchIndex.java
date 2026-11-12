@@ -35,10 +35,14 @@ public final class ModuleSearchIndex {
         put(17, "Beams", "Name labels", "Distance in labels", "Show Nether / Overworld waypoints converted", "Opacity", "Label range", "Manage waypoints", "Add waypoint here", "Waypoints", "Display");
         put(18, "Zoom level", "Smooth transition", "Scroll to adjust while held", "Remember scrolled level", "Lower mouse sensitivity", "Zoom", "Your controls");
         put(19, "Warn at or below", "Include armor", "Include offhand", "Local warning chime", "Warning");
+        put(20, "Include buried ores", "Range", "Tunnel limit", "Pause at health", "Protect low-durability tools", "Tool reserve (uses left)", "Turn speed", "Show HUD", "Ores", "Search", "Safety", "Display");
         // Labels generated from enums at runtime in the inspector.
         List<String> storage = new ArrayList<>(SETTINGS.getOrDefault(15, List.of()));
         for (StorageKind kind : StorageKind.values()) { storage.add(kind.label); storage.add(kind.label + " color"); }
         SETTINGS.put(15, List.copyOf(storage));
+        List<String> miner = new ArrayList<>(SETTINGS.getOrDefault(20, List.of()));
+        for (dev.donut.client.automine.OreKind kind : dev.donut.client.automine.OreKind.values()) miner.add(kind.label);
+        SETTINGS.put(20, List.copyOf(miner));
         List<String> finder = new ArrayList<>(SETTINGS.getOrDefault(4, List.of()));
         for (SuspectObjects.Category category : SuspectObjects.Category.values()) { finder.add(category.label); finder.add(category.label + " color"); }
         SETTINGS.put(4, List.copyOf(finder));

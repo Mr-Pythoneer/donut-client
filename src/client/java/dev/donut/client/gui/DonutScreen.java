@@ -324,7 +324,7 @@ public final class DonutScreen extends Screen {
     }
 
     private String moduleCategory(int index) {
-        return index == 3 || index == 6 ? "Blatant" : index >= 7 && index <= 9 ? "Streaming" : "Visual";
+        return index == 3 || index == 6 || index == 20 ? "Blatant" : index >= 7 && index <= 9 ? "Streaming" : "Visual";
     }
 
     private void drawWorkspaceHeader(GuiGraphics g) {
@@ -485,8 +485,8 @@ public final class DonutScreen extends Screen {
     /** With a search query, results come from every category (and match setting names); otherwise the tab filters. */
     private boolean matches(int index) {
         if (enabledOnly && !enabled(index)) return false;
-        if (!searching() && ((tab == 0 && (index == 3 || index == 6 || index >= 7 && index <= 9))
-                || (tab == 3 && index != 3 && index != 6) || (tab == 4 && (index < 7 || index > 9)))) return false;
+        if (!searching() && ((tab == 0 && (index == 3 || index == 6 || index == 20 || index >= 7 && index <= 9))
+                || (tab == 3 && index != 3 && index != 6 && index != 20) || (tab == 4 && (index < 7 || index > 9)))) return false;
         if (!searching() && tab == 1 && !favorite(index)) return false;
         String words = switch (index) {
             case 2 -> "freecam free camera fly perspective spectator scroll speed smooth follow player look at target coordinates";
@@ -505,6 +505,7 @@ public final class DonutScreen extends Screen {
             case 17 -> "waypoints waypoint markers beacon beam mark location home base save coordinates";
             case 18 -> "zoom spyglass optifine fov magnify scope";
             case 19 -> "durability alert warning armor tool break damage repair low";
+            case 20 -> "auto miner autominer mining mine ore ores diamond iron gold emerald debris tunnel pickaxe automation";
             case 15 -> "storage esp storageesp chest chests double chest trapped barrel shulker ender hopper dropper dispenser furnace smoker blast brewing crafter pot bookshelf minecart boat container stash";
             default -> "autobuilder auto builder schematic litematic building materials navigation";
         };
@@ -520,7 +521,8 @@ public final class DonutScreen extends Screen {
     }
 
     private void drawModuleSettings(GuiGraphics g, int index) {
-        if (index == 19) drawDurabilityAlertSettings(g);
+        if (index == 20) drawAutoMinerSettings(g);
+        else if (index == 19) drawDurabilityAlertSettings(g);
         else if (index == 18) drawZoomSettings(g);
         else if (index == 17) drawWaypointSettings(g);
         else if (index == 16) drawCoordinatesSettings(g);
@@ -683,6 +685,7 @@ public final class DonutScreen extends Screen {
             case 17 -> "Save places and see them through walls";
             case 18 -> "Hold a key to zoom your view";
             case 19 -> "Warn before tools and armor break";
+            case 20 -> "Walk to and mine chosen ores with vanilla controls";
             default -> "Move through your world with vanilla flight";
         };
     }
@@ -727,10 +730,11 @@ public final class DonutScreen extends Screen {
         }
     }
 
-    private boolean enabled(int index) { return index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
-    private boolean favorite(int index) { return index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
+    private boolean enabled(int index) { return index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
+    private boolean favorite(int index) { return index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
     private void toggleFavorite(int index) {
-        if (index == 19) config.durabilityAlert.favorite = !config.durabilityAlert.favorite;
+        if (index == 20) config.autoMiner.favorite = !config.autoMiner.favorite;
+        else if (index == 19) config.durabilityAlert.favorite = !config.durabilityAlert.favorite;
         else if (index == 18) config.zoom.favorite = !config.zoom.favorite;
         else if (index == 17) config.waypoints.favorite = !config.waypoints.favorite;
         else if (index == 16) config.coordinates.favorite = !config.coordinates.favorite;
@@ -751,7 +755,9 @@ public final class DonutScreen extends Screen {
         if (tab == 1) contentProgress = 0;
     }
     private void toggleEnabled(int index) {
-        if (index == 19) {
+        if (index == 20) {
+            change(() -> config.autoMiner.enabled = !config.autoMiner.enabled);
+        } else if (index == 19) {
             change(() -> config.durabilityAlert.enabled = !config.durabilityAlert.enabled);
         } else if (index == 18) {
             change(() -> config.zoom.enabled = !config.zoom.enabled);
@@ -793,7 +799,7 @@ public final class DonutScreen extends Screen {
         }
     }
     private String name(int index) {
-        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; default -> "AutoBuilder"; };
+        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; default -> "AutoBuilder"; };
     }
 
     private void drawHotbarSettings(GuiGraphics g, int ignored) {
@@ -1133,6 +1139,28 @@ public final class DonutScreen extends Screen {
         var zoomKey = dev.donut.client.input.ModuleKeybinds.zoomKey();
         controlHint(g, "Hold to zoom", zoomKey == null ? "Unbound" : keyName(zoomKey), 0);
         help(g, "Change the hold key in Minecraft Controls under Donut Client. Only your view changes; the hand keeps its normal size.");
+    }
+
+    private void drawAutoMinerSettings(GuiGraphics g) {
+        var value = config.autoMiner;
+        var miner = dev.donut.client.automine.AutoMinerController.get();
+        if (miner != null && minecraft.player != null && value.enabled) help(g, "Status: " + miner.statusLine(minecraft));
+        section(g, "Ores", 0);
+        for (var kind : dev.donut.client.automine.OreKind.values())
+            settingToggle(g, "ore" + kind.id, kind.label, 0, () -> value.oreEnabled(kind), () -> value.ores.put(kind.id, !value.oreEnabled(kind)));
+        settingToggle(g, "minerBuried", "Include buried ores", 0, () -> value.includeBuried, () -> value.includeBuried = !value.includeBuried);
+        help(g, "Off: only ores with a face open to air, the ones you could see. On: it also digs a 1\u00D72 tunnel to buried ores.");
+        section(g, "Search", 0);
+        slider(g, "minerRange", "Range", 0, () -> value.range, next -> value.range = (int) next, 8, 64, 1, " blocks");
+        slider(g, "minerTunnel", "Tunnel limit", 0, () -> value.tunnelLimit, next -> value.tunnelLimit = (int) next, 4, 128, 1, " blocks");
+        section(g, "Safety", 0);
+        slider(g, "minerHealth", "Pause at health", 0, () -> value.minHealth, next -> value.minHealth = (int) next, 1, 19, 1, " HP");
+        settingToggle(g, "minerProtect", "Protect low-durability tools", 0, () -> value.protectTools, () -> value.protectTools = !value.protectTools);
+        slider(g, "minerReserve", "Tool reserve (uses left)", 0, () -> value.toolReserve, next -> value.toolReserve = (int) next, 1, 200, 1, "");
+        slider(g, "minerTurn", "Turn speed", 0, () -> value.turnSpeed, next -> value.turnSpeed = next, 5, 45, 1, "\u00B0/tick");
+        section(g, "Display", 0);
+        settingToggle(g, "minerHud", "Show HUD", 0, () -> value.showHud, () -> value.showHud = !value.showHud);
+        help(g, "Vanilla mining only: it turns your view at a human pace and uses normal reach, speed and packets. It pauses in menus, when you move, at low health and next to lava or water, and stops when your inventory is full. Automated mining is against the rules on many servers.");
     }
 
     private void drawDurabilityAlertSettings(GuiGraphics g) {

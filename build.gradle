@@ -76,6 +76,7 @@ tasks.matching { it.name == 'processGametestResources' }.configureEach {
             def data = new groovy.json.JsonSlurper().parse(manifest)
             data.entrypoints['fabric-client-gametest'] = [
                 'dev.donut.client.gametest.AutoMinerGameTest',
+                'dev.donut.client.gametest.AutoMinerGuiGameTest',
                 'dev.donut.client.gametest.ModuleKeybindGameTest'
             ]
             manifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(data))

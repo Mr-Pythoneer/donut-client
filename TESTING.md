@@ -8,6 +8,28 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-11 (UI restyle, compact HUD panels, Auto Miner in the click GUI)
+
+- `build --no-daemon` passed with **223 unit tests**, including `ModuleSearchIndexTest` with Auto Miner's setting labels.
+- `runClientGameTest -PautoMinerTestsOnly=true` passed AutoMinerGameTest, the new **AutoMinerGuiGameTest** and ModuleKeybindGameTest. The GUI suite checks:
+  - Auto Miner is under Blatant and not Visual, and searches for "tunnel" and "ancient" find it.
+  - Selecting it doesn't switch it on. Favorite, an ore toggle, Include buried ores, the Range slider and Show HUD persist.
+  - The tile switch turns it on and off. A captured shortcut toggles the production module and its array-list row.
+  - All of this was checked at GUI scales 1 and 2.
+- Full `runClientGameTest -PgametestSkip=SpectreBuilderGuiGameTest,FlyMultiplayerGameTest` ran in two parts:
+  - The first 18 suites passed; then FlyGameTest hit the known intermittent "Network synchronizer in invalid state".
+  - A second run from FlyGameTest onward passed every remaining suite.
+  - SpectreBuilderGuiGameTest ("Missing control libraryMode") and FlyMultiplayerGameTest (needs an EULA flag) were skipped as pre-existing.
+- Updated for the restyle:
+  - `GuiTestInput` reads the tile height from `DonutScreen.TILE_H`, which is now 58.
+  - `DonutClientGameTest` checks only the header logo, because the large category-header donut was removed.
+  - `QualityOfLifeGameTest` asserts the label/value coordinate rows.
+  - `ConfigStoreTest` expects ambient particles to start off.
+- Visual review with `-PuiPreviewOnly=true` (screenshots `ui-*`):
+  - The HUD panels at GUI scales 2 and 4 are the same size, and the panels in a corner stack.
+  - The inspector stays empty until a tile is clicked.
+  - Search results, the Appearance tab and the HUD tab look right, and text is centred in the search box, settings rows and footer.
+
 ## Verified on 2026-11-11 (Phase 4 Auto Miner)
 
 - On macOS (Apple Silicon) with Temurin JDK 21.0.13: `build test --no-daemon` passed with **223 unit tests** (44 classes), and `runClientGameTest -PautoMinerTestsOnly=true --no-daemon` passed AutoMinerGameTest and ModuleKeybindGameTest. No EULA flag was created or changed.

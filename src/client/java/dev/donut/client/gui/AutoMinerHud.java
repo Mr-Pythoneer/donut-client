@@ -26,11 +26,13 @@ public final class AutoMinerHud {
         Minecraft client = Minecraft.getInstance();
         var lines = lines(client, config, miner);
         if (lines.isEmpty()) return;
-        int width = Math.min(lines.stream().mapToInt(client.font::width).max().orElse(80) + 12, graphics.guiWidth() - 16);
-        int height = lines.size() * 11 + 7, x = (graphics.guiWidth() - width) / 2, y = 4;
-        UiPaint.round(graphics, x, y, width, height, 4, 0xB0141C27);
-        for (int i = 0; i < lines.size(); i++)
-            graphics.drawString(client.font, client.font.plainSubstrByWidth(lines.get(i), width - 12), x + 6, y + 5 + i * 11,
-                    i == 0 ? 0xFFE5EFF9 : 0xFFB3C3D3, false);
+        var panel = HudPanel.of("Auto Miner", miner.state() == AutoMinerController.State.PAUSED ? "Paused" : null);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            // The panel title already names the module.
+            if (line.startsWith("Auto Miner: ")) line = Character.toUpperCase(line.charAt(12)) + line.substring(13);
+            panel.text(line, i == 0 ? HudPanel.TEXT : HudPanel.MUTED);
+        }
+        panel.draw(graphics, config, HudPanel.Anchor.TOP_LEFT);
     }
 }
