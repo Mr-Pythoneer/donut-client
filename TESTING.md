@@ -22,6 +22,22 @@ The multiplayer Fly suite uses a dedicated server bound to localhost and logs a 
   - with stone variants off it leaves a plain emerald ore alone, mines the deepslate emerald with the Silk Touch pickaxe in slot 3, and picks up the deepslate emerald ore block (screenshot `auto-miner-03-silk-pickup`).
 - Smoothness of turning and walking was not measured automatically beyond the turn-step unit test. It needs a look in game.
 
+## Verified on 2026-11-11 (BlockESP: all ores and confidence)
+
+- `build --no-daemon` passed with **236 unit tests** (45 classes). New or extended:
+  - `OreConfidenceTest`: every observation maps to its state (exposed vs. hidden solid blocks), only exposed received solid blocks count as seed checks, the Laplace-smoothed score and its clamps (negative, NaN, matches above samples), percentages under the 95%/80% caps, verdict thresholds (16 checks, 85%, 50%), HUD wording and fade.
+  - `BlockEspTest`: all 16 exact targets are distinct (lit redstone included) and nether ores, raw blocks and tuff are not targets; the legacy mask still matches only deepslate emerald/coal; kind ids round-trip; a packed chunk scan knows which targets it covered.
+  - `BlockEspSettingsTest`: fresh defaults scan exactly deepslate emerald + deepslate coal; settings JSON saved before this change (only the emerald/coal fields) loads to the same targets, colors and options; unknown keys are ignored; minimum confidence and colors clamp; new ores and variants persist.
+  - `ModuleSearchIndexTest` passes with the new inspector labels.
+- `runClientGameTest -PblockEspTestsOnly=true --no-daemon` passed BlockEspGameTest, BlockEspGuiGameTest and ModuleKeybindGameTest (twice: once before and once after the final wording change).
+  - The original 21 deepslate emerald/coal targets still match fresh vanilla chunks exactly, and again after switching more ores on and back off.
+  - Diamonds (stone + deepslate) in the same 9 chunks: 199 of 204 real diamonds predicted, no extras. The 5 missing ones sit in one blob beside a lush-cave clay/water pool. Vanilla places features that cross chunk borders in generation order, so the test allows 5% disagreement and logs the differences.
+  - A buried predicted diamond is Confirmed (100%), turns Likely after `/setblock ... stone`, disappears after `/setblock ... air`, and is Confirmed again when restored.
+  - All ores, both variants, right seed: "Seed match: 99% (92 of 93 visible checked)", 2048 markers shown (display cap reached), nothing dropped by the per-chunk cap. Wrong seed (`1`): 0% (0 of 97) and 2% (2 of 123) in the two runs, flagged as a mismatch.
+  - GUI: the Diamond, Stone variants, Deepslate variants, Fade by confidence and Minimum confidence controls persist; a color row appears only for selected ores; the original `m13.coal`, `m13.tracers` and seed controls still work.
+- Screenshots reviewed: `blockesp-01-predictions` (default HUD, "not enough data"), `blockesp-04-all-ores-confidence` (two-column HUD, Nearest line, green seed match), `blockesp-05-wrong-seed` (red accent and mismatch warning, faded Likely/Contradicted markers), `blockesp-04-settings-ores`, `blockesp-05-settings-confidence` and `blockesp-03-settings-scale2`.
+- Not run: the full `runClientGameTest` suite and `-PuiPreviewOnly=true`.
+
 ## Verified on 2026-11-11 (UI restyle, compact HUD panels, Auto Miner in the click GUI)
 
 - `build --no-daemon` passed with **223 unit tests**, including `ModuleSearchIndexTest` with Auto Miner's setting labels.
