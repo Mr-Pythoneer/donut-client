@@ -48,6 +48,23 @@ public final class BlockEspGuiGameTest implements FabricClientGameTest {
             GuiTestInput.click(context, "m13.tracers");
             require(store.load().blockEsp.tracers, "Tracer preference did not persist");
             context.takeScreenshot(TestScreenshotOptions.of("blockesp-02-settings").withSize(1280, 800));
+            // New ores, variant filters and confidence controls persist; the original two keep their ids.
+            GuiTestInput.click(context, "m13.diamond");
+            require(store.load().blockEsp.diamond && !store.load().blockEsp.coal, "Diamond toggle did not persist");
+            require(GuiTestInput.visible(context, "m13.colorDiamond color"), "Enabled ore has no colour row");
+            require(!GuiTestInput.visible(context, "m13.colorIron color"), "Disabled ore shows a colour row");
+            GuiTestInput.click(context, "m13.stoneVariants");
+            require(store.load().blockEsp.stoneVariants && store.load().blockEsp.deepslateVariants, "Stone variants did not persist");
+            context.takeScreenshot(TestScreenshotOptions.of("blockesp-04-settings-ores").withSize(1280, 800));
+            GuiTestInput.click(context, "m13.fadeByConfidence");
+            require(!store.load().blockEsp.fadeByConfidence, "Fade by confidence did not persist");
+            GuiTestInput.click(context, "m13.minConfidence");
+            int minimum = store.load().blockEsp.minConfidence;
+            require(minimum >= 40 && minimum <= 60, "Minimum confidence slider did not persist: " + minimum);
+            context.takeScreenshot(TestScreenshotOptions.of("blockesp-05-settings-confidence").withSize(1280, 800));
+            GuiTestInput.click(context, "m13.deepslateVariants");
+            require(!store.load().blockEsp.deepslateVariants, "Deepslate variants did not persist");
+            GuiTestInput.click(context, "m13.deepslateVariants");
             GuiTestInput.click(context, "keybind13"); context.getInput().pressKey(GLFW.GLFW_KEY_F9);
             GuiTestInput.closeAnimated(context);
             var production = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve("donut-client.json"));
