@@ -6,12 +6,13 @@ import java.io.IOException;
 import java.net.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import net.minecraft.SystemReport;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.core.RegistryAccess;
@@ -118,11 +119,12 @@ public final class VanillaOreGenerator implements AutoCloseable {
         }
     }
 
-    public List<OreMarker> predict(int chunkX, int chunkZ) {
+    /** Generates the chunk to FULL status and scans it for the exact targets in {@code mask}. */
+    public ChunkScan predict(int chunkX, int chunkZ, int mask) {
         checkOwner();
         if (closed) throw new IllegalStateException("Generator is closed");
         ChunkAccess chunk = server.overworld().getChunk(chunkX, chunkZ);
-        List<OreMarker> result = findOres(chunk);
+        ChunkScan result = scan(chunk, mask, ChunkScan.MAX_PER_CHUNK);
         // Expire request tickets and let vanilla release chunks. Do not tick mobs, blocks, or players.
         if (++requests % 8 == 0) {
             server.overworld().getChunkSource().tick(() -> true, false);
@@ -131,24 +133,50 @@ public final class VanillaOreGenerator implements AutoCloseable {
         return result;
     }
 
-    /** Section palettes skip all sections that cannot contain either exact target block. */
-    public static List<OreMarker> findOres(ChunkAccess chunk) {
-        var result = new ArrayList<OreMarker>();
-        var cursor = new net.minecraft.core.BlockPos.MutableBlockPos();
+    /** The original two targets (deepslate emerald and deepslate coal), uncapped. */
+    public static List<OreMarker> findOres(ChunkAccess chunk) { return findOres(chunk, OreMarker.LEGACY_MASK); }
+
+    /** Every exact target in {@code mask}, uncapped, for comparisons. */
+    public static List<OreMarker> findOres(ChunkAccess chunk, int mask) {
+        return scan(chunk, mask, Integer.MAX_VALUE).markers();
+    }
+
+    /**
+     * Section palettes skip all sections that cannot contain a selected target. When a chunk holds more than
+     * {@code cap} targets, rarer kinds are kept first (target order), so a cap never drops diamonds for coal.
+     */
+    public static ChunkScan scan(ChunkAccess chunk, int mask, int cap) {
+        long[][] found = new long[OreMarker.TARGETS][];
+        int[] counts = new int[OreMarker.TARGETS];
         var sections = chunk.getSections();
+        int minX = chunk.getPos().getMinBlockX(), minZ = chunk.getPos().getMinBlockZ();
         for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
             var section = sections[sectionIndex];
-            if (section.hasOnlyAir() || !section.maybeHas(state -> OreMarker.kind(state) != null)) continue;
+            if (mask == 0 || section.hasOnlyAir() || !section.maybeHas(state -> OreMarker.selected(mask, state))) continue;
             int bottom = chunk.getSectionYFromSectionIndex(sectionIndex) * 16;
             for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
-                var kind = OreMarker.kind(section.getBlockState(x, y, z));
-                if (kind != null) {
-                    cursor.set(chunk.getPos().getMinBlockX() + x, bottom + y, chunk.getPos().getMinBlockZ() + z);
-                    result.add(new OreMarker(cursor.immutable(), kind));
-                }
+                int target = OreMarker.target(section.getBlockState(x, y, z));
+                if (target < 0 || (mask & 1 << target) == 0) continue;
+                long[] list = found[target];
+                if (list == null) list = found[target] = new long[16];
+                else if (counts[target] == list.length) list = found[target] = Arrays.copyOf(list, list.length * 2);
+                list[counts[target]++] = BlockPos.asLong(minX + x, bottom + y, minZ + z);
             }
         }
-        return List.copyOf(result);
+        int total = 0;
+        for (int count : counts) total += count;
+        int kept = (int) Math.min(total, Math.max(0, cap));
+        long[] positions = new long[kept];
+        byte[] targets = new byte[kept];
+        int at = 0;
+        for (int target = 0; target < OreMarker.TARGETS && at < kept; target++) {
+            int take = Math.min(counts[target], kept - at);
+            if (take == 0) continue;
+            System.arraycopy(found[target], 0, positions, at, take);
+            Arrays.fill(targets, at, at + take, (byte) target);
+            at += take;
+        }
+        return new ChunkScan(mask, positions, targets, total - kept);
     }
 
     /** Additional guard beyond the normal ticket expiry; the controller recreates large generation sessions. */
