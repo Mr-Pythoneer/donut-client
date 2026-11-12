@@ -45,8 +45,8 @@ public final class NewToolsCGuiGameTest implements FabricClientGameTest {
                         boolean expected = ModuleKeybinds.isModule(id);
                         require((boolean) matches.invoke(mc.screen, id) == expected, "Module " + id + " tile shown: " + !expected);
                     }
-                    for (int id : new int[] {21, 22, 23, 27, 28}) require(!ModuleKeybinds.isModule(id), "Unexpected module " + id);
-                    for (int id = 24; id <= 26; id++) require(ModuleKeybinds.isModule(id), "Missing module " + id);
+                    // Every ID from 2 to 28 now has a module; tiles still follow existence (checked above).
+                    for (int id = 21; id <= 28; id++) require(ModuleKeybinds.isModule(id), "Missing module " + id);
                 } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
             });
             // All three live under Visual.

@@ -8,6 +8,18 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-11 (eight new modules: Freelook, Player ESP, Search, HUD widgets, NewChunks, Stash Finder, Auto Reconnect, Auto Eat)
+
+- `build --no-daemon` passed with **322 unit tests**.
+- New focused suites `-PnewToolsATestsOnly`, `-PnewToolsBTestsOnly` and `-PnewToolsCTestsOnly` passed after merging. Notes on what each one covers are in `docs/freelook.md`, `docs/player-esp.md`, `docs/search.md`, `docs/hud-widgets.md`, `docs/new-chunks.md`, `docs/stash-finder.md`, `docs/auto-reconnect.md` and `docs/auto-eat.md`.
+- Full `runClientGameTest -PgametestSkip=SpectreBuilderGuiGameTest,FlyMultiplayerGameTest`:
+  - The first 30 suites passed, all the new ones included. Then FlyGameTest hit the known intermittent "Network synchronizer in invalid state".
+  - A second run from FlyGameTest onward passed every remaining suite.
+- Not run against a real server:
+  - Auto Reconnect was tested against a closed local port: the countdown and connect screen work, but a real rejoin wasn't run.
+  - NewChunks' "old chunk" signal is weak on batched chunk sending (documented). It has no demo clip.
+- The demo reel recorded 23 clips and a 2 min 57 s tour. Each new clip was checked with a contact sheet.
+
 ## Verified on 2026-11-11 (full suite after merging BlockESP confidence, Auto Miner tools/gravel, waypoint/profile polish)
 
 - `build --no-daemon` passed with **263 unit tests**.

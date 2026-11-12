@@ -19,6 +19,13 @@ All clips were recorded automatically in a singleplayer test world by the demo-r
   - [Freecam](#freecam)
   - [Zoom](#zoom)
   - [Durability Alert](#durability-alert)
+  - [Freelook](#freelook)
+  - [Player ESP](#player-esp)
+  - [Search](#search)
+  - [HUD widgets](#hud-widgets)
+  - [NewChunks](#newchunks)
+  - [Stash Finder](#stash-finder)
+  - [Auto Reconnect](#auto-reconnect)
   - [BlockESP (seed ore predictor)](#blockesp-seed-ore-predictor)
   - [Base Finder](#base-finder)
   - [Amethyst Scanner](#amethyst-scanner)
@@ -28,6 +35,7 @@ All clips were recorded automatically in a singleplayer test world by the demo-r
   - [Sound Detector](#sound-detector)
 - [Blatant tools](#blatant-tools)
   - [Auto Miner](#auto-miner)
+  - [Auto Eat](#auto-eat)
   - [Fly](#fly)
   - [AutoBuilder](#autobuilder)
 - [Streaming tools](#streaming-tools)
@@ -194,6 +202,108 @@ A card under the crosshair lists any held item or armour piece at or below a thr
 - **Where:** Visual → Durability Alert.
 - **Settings:** threshold (1–50%), include armour, include offhand, chime on or off.
 
+### Freelook
+
+[![Freelook](videos/18-freelook.gif)](videos/18-freelook.mp4)
+[Watch: Freelook](videos/18-freelook.mp4)
+
+Hold **Left Alt** to swing the camera around your player in third person, without turning the player. Let go to return to your previous view.
+
+- **Where:** Visual → Freelook (turn the module on). The key is "Freelook (hold)" in Controls.
+- **Settings:** toggle instead of hold, perspective (Back, Front or Keep current), invert pitch, and camera distance (1–12 blocks; walls still stop the camera like vanilla).
+- **Camera only:** your player keeps facing and walking the same way, and nothing is sent. Freecam takes priority, and menus pause it.
+
+More: [Freelook notes](freelook.md)
+
+### Player ESP
+
+[![Player ESP](videos/19-player-esp.gif)](videos/19-player-esp.mp4)
+[Watch: Player ESP](videos/19-player-esp.mp4)
+
+Other players your game has loaded, shown through walls: a box, an optional tracer, and a nametag with their health, armour, held item and distance.
+
+- **Where:** Visual → Player ESP.
+- **Targets:** players by default. Hostile mobs, animals and dropped items each have their own toggle.
+- **Colours:** by distance (red near, green far), fixed, or team colours. A **friends** list draws friends in their own colour.
+- **Privacy:** with **Respect Name Hider** on (default) and Name Hider on, tags say "Player" or "Friend" instead of real names. Minecraft's own name tag above a player still shows the name.
+- **Never shown:** you, or anything the camera is inside.
+
+More: [Player ESP notes](player-esp.md)
+
+### Search
+
+[![Search](videos/20-search.gif)](videos/20-search.mp4)
+[Watch: Search](videos/20-search.mp4)
+
+Highlights any blocks you choose, through walls, each in its own colour.
+
+- **Where:** Visual → Search.
+- **Adding blocks:**
+  - type a block ID (it checks the ID and suggests matches);
+  - click a suggestion;
+  - or use **Add looked-at block**.
+  - Up to 64 blocks, each with a colour and a Remove button.
+- **Settings:** range (16–512), max results (nearest first), opacity, merge neighbouring blocks into one box, tracers, a count/nearest panel, and rescan.
+- **Limits:** it only sees chunks your game has received, and on anti-xray servers hidden blocks may be disguised.
+
+More: [Search notes](search.md)
+
+### HUD widgets
+
+[![HUD widgets](videos/21-hud-widgets.gif)](videos/21-hud-widgets.mp4)
+[Watch: HUD widgets](videos/21-hud-widgets.mp4)
+
+Small info panels in the same style as the rest of Donut's HUD:
+- FPS, ping, clicks per second, memory, clock, server address and a compass;
+- key strokes, armour status and potion effects.
+
+- **Where:** Visual → HUD widgets. Each widget has its own switch and corner. Text widgets in the same corner share one panel.
+- **Defaults:** FPS, ping, armour and potions. Top-right widgets start below the module list and vanilla's effect icons.
+- **Notes:** CPS only counts your own clicks, and ping is your tab-list latency. They hide with F1, F3, menus and the HUD switch, and follow **HUD → Panel size**.
+
+More: [HUD widget notes](hud-widgets.md)
+
+### NewChunks
+
+*(No clip: it needs real terrain being generated around flowing water, which the test worlds can't show honestly.)*
+
+Marks chunks that look like the server is generating them for the first time. It shows a red overlay at a height you choose, which is useful for spotting where nobody has been.
+
+- **How it guesses:** when liquid starts flowing right after a chunk arrives, that chunk is probably new. A chunk that arrives with its liquid already settled is probably old.
+- **Accuracy:** "new" (red) is a reasonable hint. "Old" (green) is weak on newer servers, which send chunks in batches, so **Show old chunks** is off by default. Chunks without liquid stay unmarked, and pouring water can mark an old chunk as new.
+- **Settings:** range, overlay height, opacity, colours, outlines, through walls, and **Clear marks**.
+
+More: [NewChunks notes](new-chunks.md)
+
+### Stash Finder
+
+[![Stash Finder](videos/22-stash-finder.gif)](videos/22-stash-finder.mp4)
+[Watch: Stash Finder](videos/22-stash-finder.mp4)
+
+Logs every chunk you see that holds a lot of storage. The default is 8 or more chests, barrels or shulker boxes, and other blocks can be given weight too.
+
+- **Where:** Visual → Stash Finder. **Open stash list** (button or unbound shortcut) lists them per server.
+- **Stash list:** add a waypoint, copy coordinates, delete, or export CSV and JSON to `config/donut-stashes/`.
+- **Notices:** an action-bar notice (or toast) when a stash is found.
+- It uses Storage ESP's block types but works whether or not Storage ESP is on.
+
+More: [Stash Finder notes](stash-finder.md)
+
+### Auto Reconnect
+
+*(No clip: it needs a multiplayer server to disconnect from.)*
+
+When you're disconnected from a server, the disconnect screen counts down and rejoins the same address through the normal connect screen. A **Stop** button cancels it, and leaving that screen stops retrying.
+
+- **Settings:**
+  - delay (1–60 s, default 5);
+  - max attempts (default 5, 0 = unlimited);
+  - wait longer after each failure;
+  - don't retry bans and whitelists (on).
+- Multiplayer only.
+
+More: [Auto Reconnect notes](auto-reconnect.md)
+
 ### BlockESP (seed ore predictor)
 
 [![BlockESP seed predictor](videos/16-blockesp-predictor.gif)](videos/16-blockesp-predictor.mp4)
@@ -308,6 +418,21 @@ Finds ores in the chunks your game already has, walks to them, mines them and pi
 
 More: [Auto Miner guide](auto-miner.md)
 
+### Auto Eat
+
+[![Auto Eat](videos/23-auto-eat.gif)](videos/23-auto-eat.mp4)
+[Watch: Auto Eat](videos/23-auto-eat.mp4)
+
+When your hunger drops to a threshold (default 14 of 20), or your health is low, it eats the most filling allowed food in your **hotbar** using normal item use, then switches back to your previous slot.
+
+- **Where:** Blatant → Auto Eat.
+- **Never eat:** rotten flesh, spider eyes, poisonous potatoes, pufferfish, chorus fruit, suspicious stew and golden apples are blocked by default. Each one can be toggled.
+- **Waiting and pausing:** it waits in menus and Creative, and while you use another item.
+- **With Auto Miner:** it lets the miner finish its current ore first, unless hunger is critical (6 or less).
+- **Hotbar only:** it never moves food in from your inventory.
+
+More: [Auto Eat notes](auto-eat.md)
+
 ### Fly
 
 [![Fly](videos/11-fly.gif)](videos/11-fly.mp4)
@@ -367,13 +492,14 @@ A stream overlay with three hexagons (Overworld, Nether, End) that you mark as y
 | **Right Shift** | Open or close the Donut menu |
 | **F6** | Freecam on/off |
 | Hold **Z** | Zoom (Zoom module on) |
+| Hold **Left Alt** | Freelook (Freelook module on) |
 | **Ctrl+F** (menu) | Search |
 | **Enter** (search) | Open the top result |
 | **Esc** (menu) | Clear search, close pop-ups, close the menu |
 | **Page Up/Down, Home/End** (menu) | Scroll |
 | **Tab / Shift+Tab, Enter/Space, ←/→** (menu) | Keyboard navigation and slider steps |
 | **R, Page Up/Down, Enter** | AutoBuilder placement: rotate, raise/lower, anchor |
-| Unbound by default | Every other module toggle, plus Open waypoints, Add waypoint here, Acknowledge sound alert, Mute sound alerts and Sound activity history. Set them in a module's inspector or in Options → Controls → Donut Client |
+| Unbound by default | Every other module toggle, plus Open waypoints, Add waypoint here, Open stash list, Acknowledge sound alert, Mute sound alerts and Sound activity history. Set them in a module's inspector or in Options → Controls → Donut Client |
 
 Donut has **no chat commands**. Everything is in the menu.
 

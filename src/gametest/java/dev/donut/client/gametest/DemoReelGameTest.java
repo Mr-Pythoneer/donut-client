@@ -95,6 +95,12 @@ public final class DemoReelGameTest implements FabricClientGameTest {
             lightDebug(context, server);
             staffDetector(context, server);
             baseFinder(context, server);
+            freelook(context, server);
+            playerEsp(context, server);
+            search(context, server);
+            hudWidgets(context, server);
+            stashFinder(context, server);
+            autoEat(context, server);
         }
         try (var world = context.worldBuilder().setUseConsistentSettings(false).adjustSettings(creator -> {
             creator.setSeed(dev.donut.client.config.BlockEspSettings.DEFAULT_SEED);
@@ -110,6 +116,8 @@ public final class DemoReelGameTest implements FabricClientGameTest {
                 config.autoMiner.enabled = false;
                 config.fullbright.enabled = config.hotbar.enabled = config.nameHider.enabled = config.progressBar.enabled = false;
                 config.lightDebug.enabled = config.staffDetector.enabled = config.chunkFinder.enabled = config.amethyst.enabled = false;
+                config.freelook.enabled = config.playerEsp.enabled = config.search.enabled = config.hudWidgets.enabled = false;
+                config.stashFinder.enabled = config.autoEat.enabled = config.newChunks.enabled = false;
                 if (FreecamController.getInstance() != null) FreecamController.getInstance().setEnabled(false);
             });
         }
@@ -425,6 +433,146 @@ public final class DemoReelGameTest implements FabricClientGameTest {
         film(context, 60, t -> turnPlayer(context, 0.5f, 0));
         context.runOnClient(mc -> config.chunkFinder.enabled = false);
         scene("17-base-finder");
+    }
+
+    private void freelook(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "gamemode creative @a", "tp @a 0.5 " + Y + " 2.5 180 4");
+        context.waitTicks(10);
+        caption("Freelook", "Hold Left Alt to look around your player without turning it");
+        context.runOnClient(mc -> config.freelook.enabled = true);
+        film(context, 15, null);
+        var key = context.computeOnClient(mc -> dev.donut.client.freelook.FreelookController.get().key());
+        context.getInput().holdKey(key);
+        film(context, 90, t -> context.getInput().moveCursor(t < 60 ? 9 : -6, t < 30 ? -1.5 : 0));
+        context.getInput().releaseKey(key);
+        film(context, 20, null);
+        context.runOnClient(mc -> config.freelook.enabled = false);
+        scene("18-freelook");
+    }
+
+    private static final com.mojang.authlib.GameProfile DEMO_PLAYER =
+            new com.mojang.authlib.GameProfile(java.util.UUID.fromString("5b0e7a6c-1d2f-4e3a-9b8c-7d6e5f4a3b2c"), "DemoFriend");
+
+    private void playerEsp(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        // A player inside the closed hut, seen through its walls.
+        server.runOnServer(mc -> {
+            var level = mc.overworld();
+            var fake = net.fabricmc.fabric.api.entity.FakePlayer.get(level, DEMO_PLAYER);
+            fake.snapTo(28.5, Y, 7.5, 180, 0);
+            fake.setHealth(14);
+            fake.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_HELMET));
+            fake.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
+            fake.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD));
+            mc.getPlayerList().broadcastAll(net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(fake)));
+            level.addNewPlayer(fake);
+        });
+        TestingGroundsBuilder.run(server, "tp @a 28.5 " + Y + " -3.5 0 8");
+        context.waitTicks(20);
+        caption("Player ESP", "Players through walls, with health, armour, held item and distance");
+        context.runOnClient(mc -> config.playerEsp.enabled = true);
+        film(context, 50, null);
+        context.runOnClient(mc -> config.playerEsp.tracers = true);
+        caption("Player ESP", "Optional tracers, friend colours and mob or item targets");
+        film(context, 50, t -> turnPlayer(context, t < 25 ? -0.6f : 0.6f, 0));
+        context.runOnClient(mc -> { config.playerEsp.enabled = false; config.playerEsp.tracers = false; });
+        server.runOnServer(mc -> {
+            var fake = net.fabricmc.fabric.api.entity.FakePlayer.get(mc.overworld(), DEMO_PLAYER);
+            mc.overworld().removePlayerImmediately(fake, net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+            mc.getPlayerList().broadcastAll(new net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket(List.of(DEMO_PLAYER.id())));
+        });
+        scene("19-player-esp");
+    }
+
+    private void search(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "tp @a -12.5 " + Y + " 1.5 115 5");
+        context.waitTicks(10);
+        caption("Search", "Highlight any blocks you choose: here gold, diamond blocks and the beacon");
+        context.runOnClient(mc -> {
+            config.search.blocks.clear();
+            config.search.add("minecraft:gold_block", 0xF0B45A);
+            config.search.add("minecraft:diamond_block", 0x56DCCB);
+            config.search.add("minecraft:beacon", 0xC77DFF);
+            config.search.enabled = true;
+        });
+        // Start on the sealed room (diamond block, beacon), then tilt up to the gold block on top of the tower.
+        film(context, 40, t -> turnPlayer(context, -0.4f, 0));
+        film(context, 60, t -> turnPlayer(context, -0.15f, -1.0f));
+        film(context, 20, null);
+        context.runOnClient(mc -> config.search.enabled = false);
+        scene("20-search");
+    }
+
+    private void hudWidgets(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "gamemode survival @a", "tp @a 0.5 " + Y + " 2.5 180 -25",
+                "effect give @a minecraft:speed 30 1 true", "effect give @a minecraft:night_vision 30 0 true");
+        context.waitTicks(10);
+        caption("HUD widgets", "FPS, ping, CPS, compass, clock, key strokes, armour and potions");
+        context.runOnClient(mc -> {
+            var widgets = config.hudWidgets;
+            for (var widget : List.of(dev.donut.client.hudwidgets.HudWidget.CPS, dev.donut.client.hudwidgets.HudWidget.COMPASS,
+                    dev.donut.client.hudwidgets.HudWidget.CLOCK, dev.donut.client.hudwidgets.HudWidget.KEYSTROKES)) widgets.setWidgetEnabled(widget, true);
+            widgets.enabled = true;
+        });
+        film(context, 30, null);
+        context.getInput().holdKey(options -> options.keyUp);
+        film(context, 30, t -> { if (t % 4 == 0) context.getInput().pressMouse(GLFW.GLFW_MOUSE_BUTTON_LEFT); turnPlayer(context, 0.8f, 0); });
+        context.getInput().releaseKey(options -> options.keyUp);
+        film(context, 30, t -> turnPlayer(context, 0.8f, 0));
+        context.runOnClient(mc -> config.hudWidgets.enabled = false);
+        TestingGroundsBuilder.run(server, "effect clear @a", "gamemode creative @a");
+        scene("21-hud-widgets");
+    }
+
+    private void stashFinder(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "tp @a 22.5 " + (Y + 2) + " -14.5 20 22");
+        context.waitTicks(10);
+        caption("Stash Finder", "Logs chunks packed with storage, and keeps a list per server");
+        context.runOnClient(mc -> { config.stashFinder.threshold = 8; config.stashFinder.enabled = true; });
+        film(context, 50, null);
+        caption("Stash Finder", "The stash list: add a waypoint, copy coordinates or export CSV/JSON");
+        context.setScreen(() -> new dev.donut.client.gui.StashScreen(null, config, () -> { }));
+        context.runOnClient(mc -> { if (mc.screen instanceof dev.donut.client.gui.StashScreen stash) stash.selectFirst(); });
+        film(context, 60, null);
+        context.setScreen(() -> null);
+        context.runOnClient(mc -> config.stashFinder.enabled = false);
+        scene("22-stash-finder");
+    }
+
+    private void autoEat(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "gamemode survival @a", "tp @a 0.5 " + Y + " 2.5 180 10",
+                "item replace entity @a hotbar.6 with minecraft:bread 8");
+        context.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
+        server.runOnServer(mc -> mc.getPlayerList().getPlayers().getFirst().getFoodData().setFoodLevel(6));
+        context.waitTicks(10);
+        caption("Auto Eat", "When you're hungry it eats hotbar food, then switches back");
+        context.runOnClient(mc -> config.autoEat.enabled = true);
+        film(context, 110, null);
+        context.runOnClient(mc -> config.autoEat.enabled = false);
+        TestingGroundsBuilder.run(server, "gamemode creative @a");
+        scene("23-auto-eat");
+    }
+
+    private void newChunks(ClientGameTestContext context, TestServerContext server) {
+        var config = DonutClient.config();
+        TestingGroundsBuilder.run(server, "gamemode spectator @a", "tp @a 2400.5 110 2400.5 45 35");
+        context.waitTicks(10);
+        context.runOnClient(mc -> config.newChunks.enabled = true);
+        caption("NewChunks", "Marks chunks the server is generating for the first time (red)");
+        context.getInput().holdKey(options -> options.keyUp);
+        context.getInput().holdKey(options -> options.keySprint);
+        film(context, 150, t -> turnPlayer(context, 0.15f, 0));
+        context.getInput().releaseKey(options -> options.keySprint);
+        context.getInput().releaseKey(options -> options.keyUp);
+        caption("Client-side only", "Everything reads data your game already has. No extra packets, no teleports.");
+        film(context, 60, t -> turnPlayer(context, 0.6f, 0));
+        context.runOnClient(mc -> config.newChunks.enabled = false);
+        scene("24-new-chunks");
     }
 
     // ---------------------------------------------------------------- capture
