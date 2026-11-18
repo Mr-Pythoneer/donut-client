@@ -30,6 +30,7 @@ public final class ClientConfig {
     public NameHiderSettings nameHider = new NameHiderSettings();
     public HotbarSettings hotbar = new HotbarSettings();
     public BlatantGuardSettings blatantGuard = new BlatantGuardSettings();
+    public StructureFinderSettings structureFinder = new StructureFinderSettings();
     public int accentColor = 0x56DCCB;
     public ClickGuiStyle clickGuiStyle = new ClickGuiStyle();
     public boolean clickGuiParticles = false;
@@ -50,6 +51,8 @@ public final class ClientConfig {
         if (hotbar == null) hotbar = new HotbarSettings();
         if (blatantGuard == null) blatantGuard = new BlatantGuardSettings();
         blatantGuard.sanitize();
+        if (structureFinder == null) structureFinder = new StructureFinderSettings();
+        structureFinder.sanitize();
         freecam.sanitize();
         autoBuilder.sanitize();
         chunkFinder.sanitize();

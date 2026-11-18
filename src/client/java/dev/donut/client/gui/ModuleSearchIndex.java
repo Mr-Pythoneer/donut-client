@@ -19,6 +19,7 @@ public final class ModuleSearchIndex {
     static {
         put(2, "Camera speed", "Sprint boost", "Smoothing", "Scroll wheel adjusts speed", "Speed / status readout", "Resume last camera position", "Follow nearest player", "Follow range", "Look at target", "Set target ", "Movement", "Camera helpers", "Your controls");
         put(3, "Spectre Creative engine", "Open AutoBuilder", "Schematics");
+        put(29, "Open the finder", "Search", "Area scan (off = nearest of each)", "Area radius", "Max results", "Structure types");
         put(4, "Simulation distance", "Sensitivity", "Bee clue points", "Object / inspect range", "Look-to-inspect panel", "Panel opacity", "Outline opacity", "Include short / immature growth", "Minimum kelp length", "Minimum vine length", "Minimum cave vine length", "Minimum bamboo height", "Minimum mature crystals", "Minimum mature crystal %", "Kelp", "Cave vines", "Vines", "Amethyst", "Bamboo", "Cocoa", "Bee nests / hives", "Panel top color", "Panel bottom color", "Detection", "Discovery panel", "Object outlines", "Growth and geodes", "Clue filters", "Objects and colors");
         put(5, "Brightness");
         put(6, "Vanilla flight", "Your controls");

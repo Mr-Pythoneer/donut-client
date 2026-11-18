@@ -17,7 +17,7 @@ public final class ModuleArrayList {
     private static final String[] NAMES = {"Freecam", "AutoBuilder", "Base Finder",
             "Fullbright", "Fly", "Progress Bar", "Name Hider", "Hotbar", "Amethyst Scanner", "Light Debug", "Sound Detector", "BlockESP", "Staff Detector", "Storage ESP", "Coordinates", "Waypoints", "Zoom", "Durability Alert", "Auto Miner",
             // Index = module ID - 2. Unused IDs are null and never shown.
-            "Freelook", "Player ESP", "Search", "HUD Widgets", "NewChunks", "Stash Finder", "Auto Reconnect", "Auto Eat"};
+            "Freelook", "Player ESP", "Search", "HUD Widgets", "NewChunks", "Stash Finder", "Auto Reconnect", "Auto Eat", "Seed Finder"};
     private static final float[] animation = new float[NAMES.length];
     private static long lastFrame;
     private static List<Row> rows = List.of();

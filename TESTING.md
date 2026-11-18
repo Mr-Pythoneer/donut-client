@@ -8,6 +8,13 @@ Run `./gradlew runClientGameTest` for isolated Minecraft runtime tests. They cre
 
 The multiplayer Fly suite uses a dedicated server bound to localhost and logs a skip unless `build/run/clientGameTest/eula.txt` contains `eula=true`. Loom normally runs `deleteGameTestRunDir` before launch, which deletes that file along with the runtime directory. To opt in manually after reading and accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA), create or edit `build/run/clientGameTest/eula.txt` with `eula=true`, then run `./gradlew runClientGameTest -x deleteGameTestRunDir` from the project root to preserve the flag. EULA acceptance is a separate user decision; the tests never create or change an acceptance flag.
 
+## Verified on 2026-11-17 (Seed Structure Finder, module 29)
+
+- `build test` passed with **339 unit tests** (StructureCatalogTest added; ModuleSearchIndex/ConfigProfiles/ModuleKeybind all still pass with MODULE_COUNT 28).
+- `runClientGameTest -PgametestOnly=StructureSearchGameTest` passed: against the headless generator for seed 6608149111735331168, nearest-of-each finds village, stronghold, fortress and end city, and an area scan within 1200 blocks of origin returns hundreds of hits, all inside the radius.
+- `runClientGameTest -PgametestOnly=StructureFinderGuiGameTest` passed: the module tile opens the finder, Find runs a real search, and 21 structure types list with coordinates (screenshot `structure-finder-results`).
+- Accuracy note: the finder uses the game's own placement + biome logic (`findNearestMapStructure`), so results match `/locate`, not a grid guess.
+
 ## Verified on 2026-11-12 (kill switch, anti-cheat probe)
 
 - `build test --offline` passed with **330 unit tests**, including 8 for `KillSwitchTest`:

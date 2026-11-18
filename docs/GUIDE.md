@@ -28,6 +28,7 @@ All clips were recorded automatically in a singleplayer test world by the demo-r
   - [Stash Finder](#stash-finder)
   - [Auto Reconnect](#auto-reconnect)
   - [BlockESP (seed ore predictor)](#blockesp-seed-ore-predictor)
+  - [Seed Structure Finder](#seed-structure-finder)
   - [Base Finder](#base-finder)
   - [Amethyst Scanner](#amethyst-scanner)
   - [Light Debug](#light-debug)
@@ -403,6 +404,22 @@ Watches sounds and events your game receives: containers, pistons, note blocks, 
 - Natural sounds, mobs and your own actions are filtered out by default. It never requests distant sounds.
 
 More: [implementation plan](sound-detector-implementation-plan.md)
+
+---
+
+### Seed Structure Finder
+
+*(No clip: it opens a full screen.)*
+
+Type a world seed and find its structures with exact coordinates — villages, strongholds, end cities and ships, fortresses, bastions, monuments, mansions, ancient cities, trial chambers, temples, outposts, shipwrecks, ocean ruins, buried treasure, ruined portals, trail ruins and nether fossils.
+
+- It's in **Visual** as **Seed Finder**; the tile opens the screen.
+- **Accurate, not a guess:** it runs the game's own `/locate` logic against a headless copy of the seed's generator (the same generator BlockESP uses for ores), so results include the biome check.
+- **Modes:** *Nearest of each* (closest of every type from where you stand) or *Area scan* (everything of each type within 500–3000 blocks).
+- **Results** show type, coordinates, dimension and distance. **Add waypoint**, **Add all** and **Copy coords** are at the bottom; pick types, mode and radius in the module's settings.
+- **Client-side only:** it never contacts the server, and works from single-player or multiplayer.
+
+More: [Seed Structure Finder guide](structure-finder.md).
 
 ---
 

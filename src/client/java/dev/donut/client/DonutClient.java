@@ -77,6 +77,7 @@ public final class DonutClient implements ClientModInitializer {
     private dev.donut.client.autoeat.AutoEatController autoEat;
     private dev.donut.client.newchunks.NewChunksController newChunks;
     private dev.donut.client.stash.StashFinderController stashFinder;
+    private dev.donut.client.structurefinder.StructureFinderController structureFinder;
 
     @Override
     public void onInitializeClient() {
@@ -105,6 +106,7 @@ public final class DonutClient implements ClientModInitializer {
         autoEat = new dev.donut.client.autoeat.AutoEatController(config);
         newChunks = new dev.donut.client.newchunks.NewChunksController(config);
         stashFinder = new dev.donut.client.stash.StashFinderController(config);
+        structureFinder = new dev.donut.client.structurefinder.StructureFinderController(config);
         activeKillSwitch = new dev.donut.client.killswitch.KillSwitch(dev.donut.client.killswitch.KillSwitch.currentBuild(),
                 dev.donut.client.killswitch.KillSwitch.defaultFile(), System.currentTimeMillis());
         // Registered before every module's tick, so an expired build never runs a module for even one tick.
@@ -168,6 +170,7 @@ public final class DonutClient implements ClientModInitializer {
         ModuleKeybinds.register(21, bind("toggle_freelook", InputConstants.UNKNOWN.getValue(), category));
         ModuleKeybinds.register(27, bind("toggle_auto_reconnect", InputConstants.UNKNOWN.getValue(), category));
         ModuleKeybinds.register(28, bind("toggle_auto_eat", InputConstants.UNKNOWN.getValue(), category));
+        ModuleKeybinds.register(29, bind("open_structure_finder", InputConstants.UNKNOWN.getValue(), category));
         freelook.setKey(bind("freelook", GLFW.GLFW_KEY_LEFT_ALT, category));
         ModuleKeybinds.register(24, bind("toggle_hud_widgets", InputConstants.UNKNOWN.getValue(), category));
         ModuleKeybinds.register(25, bind("toggle_new_chunks", InputConstants.UNKNOWN.getValue(), category));
@@ -307,6 +310,8 @@ public final class DonutClient implements ClientModInitializer {
                 }
                 save();
             }
+            if (ModuleKeybinds.consumePress(client, 29) && !inputBlocked && client.screen == null && client.player != null)
+                client.setScreen(new dev.donut.client.gui.StructureFinderScreen(null, config, this::save));
             while (stashMenu.consumeClick()) if (!inputBlocked && client.screen == null && client.player != null)
                 client.setScreen(new dev.donut.client.gui.StashScreen(null, config, this::save));
             newChunks.tick(client);
@@ -371,6 +376,7 @@ public final class DonutClient implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { playerEsp.disconnect(); search.disconnect(); staffDetector.disconnect(); blockEsp.disconnect(); storageEsp.disconnect(); zoom.reset(); durabilityAlert.clear(); soundDetector.disconnect(); chunkScanner.clear(); amethystScanner.clear(); lightDebug.clear(); freecam.disconnect(); fly.clientDisconnected(handler, client); autoBuilder.disconnect(); autoMiner.disconnect(); freelook.disconnect(); autoEat.disconnect(); newChunks.disconnect(); stashFinder.disconnect(); });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             ProgressTimers.captureAndPause(config);
+            if (structureFinder != null) structureFinder.close();
             fullbright.close();
             freecam.disable();
             fly.disable();

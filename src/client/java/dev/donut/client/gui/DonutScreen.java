@@ -412,13 +412,13 @@ public final class DonutScreen extends Screen {
         if (searching()) {
             // Search spans every category: say which setting matched, or where the module lives.
             String setting = ModuleSearchIndex.matchedSetting(index, query);
-            detail = setting != null ? "Setting: " + setting : moduleCategory(index) + " \u00B7 " + (index == 3 ? "Action" : enabled(index) ? "On" : "Off");
+            detail = setting != null ? "Setting: " + setting : moduleCategory(index) + " \u00B7 " + (index == 3 || index == 29 ? "Action" : enabled(index) ? "On" : "Off");
             if (setting != null) detailColor = CONTROL_MUTED;
         } else detail = description(index);
         smallText(g, font, ellipsizeSmall(detail, textW), x + 14, detailY, detailColor);
         hit("module" + index, x, y, w - 48, TILE_H, () -> selectModule(index), () -> selectModule(index));
         int switchY = y + (TILE_H - 17) / 2;
-        if (index == 3) smallText(g, font, "Open", x + w - 14 - WorkspacePaint.smallWidth(font, "Open"), midSmall(y, TILE_H), CONTROL_MUTED);
+        if (index == 3 || index == 29) smallText(g, font, "Open", x + w - 14 - WorkspacePaint.smallWidth(font, "Open"), midSmall(y, TILE_H), CONTROL_MUTED);
         else {
             double on = animate("tileEnabled" + index, enabled(index) ? 1 : 0);
             round(g, x + w - 44, switchY, 30, 17, 8.5f, blend(0xFF3A3F4A, accent(), on));
@@ -473,7 +473,7 @@ public final class DonutScreen extends Screen {
             rowW = w - 40;
             rowPrefix = "m" + index + ".";
             settingsCursor = detailTop + 8 - (int) detailScroll;
-            button(g, "detailEnable", index == 3 ? "Open AutoBuilder" : enabled(index) ? "Disable module" : "Enable module",
+            button(g, "detailEnable", index == 3 ? "Open AutoBuilder" : index == 29 ? "Open Seed Finder" : enabled(index) ? "Disable module" : "Enable module",
                     rowX, settingsCursor, rowW, s(32), () -> toggleEnabled(index));
             settingsCursor += s(52);
             drawModuleSettings(g, index);
@@ -538,6 +538,7 @@ public final class DonutScreen extends Screen {
             case 24 -> "hud widgets fps frames ping latency cps clicks memory ram clock time server address compass direction keystrokes key strokes wasd armour armor durability potion effects";
             case 25 -> "newchunks new chunks old chunks generated fresh liquid water lava flow chunk trail exploration";
             case 26 -> "stash finder stashfinder stash base chests storage shulker barrel log export csv json waypoint";
+            case 29 -> "seed structure finder locate village stronghold end city ship fortress bastion monument mansion temple outpost trial chamber ancient shipwreck treasure ruined portal";
             default -> "autobuilder auto builder schematic litematic building materials navigation";
         };
         String needle = query.toLowerCase(Locale.ROOT).trim();
@@ -578,7 +579,27 @@ public final class DonutScreen extends Screen {
         else if (index == 5) drawFullbrightSettings(g, 0);
         else if (index == 4) drawChunkFinderSettings(g, 0);
         else if (index == 3) drawAutoBuilderSettings(g, 0);
+        else if (index == 29) drawStructureFinderSettings(g);
         else if (index == 2) drawFreecamSettings(g, 0);
+    }
+
+    private void drawStructureFinderSettings(GuiGraphics g) {
+        var value = config.structureFinder;
+        help(g, "Type a seed and find vanilla structures from it with the game's own locate logic. Runs offline; it never asks the server. Saved waypoints use your current dimension.");
+        button(g, "openFinder", "Open the finder", rowX, settingsCursor, rowW, s(30), () -> { flush(); minecraft.setScreen(new StructureFinderScreen(this, config, save)); });
+        settingsCursor += s(46);
+        section(g, "Search", 0);
+        settingToggle(g, "sfArea", "Area scan (off = nearest of each)", 0, () -> !value.nearestOnly, () -> value.nearestOnly = !value.nearestOnly);
+        if (!value.nearestOnly) {
+            slider(g, "sfRadius", "Area radius", 0, () -> value.radius, next -> value.radius = (int) next,
+                    dev.donut.client.config.StructureFinderSettings.MIN_RADIUS, dev.donut.client.config.StructureFinderSettings.MAX_RADIUS, 100, " blocks");
+            slider(g, "sfMax", "Max results", 0, () -> value.maxResults, next -> value.maxResults = (int) next,
+                    dev.donut.client.config.StructureFinderSettings.MIN_RESULTS, dev.donut.client.config.StructureFinderSettings.MAX_RESULTS, 50, "");
+        }
+        section(g, "Structure types", 0);
+        for (var group : dev.donut.client.structurefinder.StructureCatalog.GROUPS)
+            settingToggle(g, "sfType-" + group.id(), group.label(), 0, () -> !value.groupHidden(group.id()),
+                    () -> value.setGroupHidden(group.id(), !value.groupHidden(group.id())));
     }
 
     /** The anti-cheat test result for this module and, for the Blatant ones, where they're allowed to run. */
@@ -734,6 +755,7 @@ public final class DonutScreen extends Screen {
         return switch (index) {
             case 2 -> "Explore freely with a detached camera";
             case 3 -> "Preview schematics and automate building";
+            case 29 -> "Find structures from a world seed";
             case 4 -> "Inspect objects, growth formations and light clues";
             case 5 -> "Keep dark places bright and clear";
             case 7 -> "Three manual milestones for your stream";
@@ -803,7 +825,7 @@ public final class DonutScreen extends Screen {
     }
 
     private boolean enabled(int index) { return index == 28 ? config.autoEat.enabled : index == 27 ? config.autoReconnect.enabled : index == 26 ? config.stashFinder.enabled : index == 25 ? config.newChunks.enabled : index == 24 ? config.hudWidgets.enabled : index == 23 ? config.search.enabled : index == 22 ? config.playerEsp.enabled : index == 21 ? config.freelook.enabled : index == 20 ? config.autoMiner.enabled : index == 19 ? config.durabilityAlert.enabled : index == 18 ? config.zoom.enabled : index == 17 ? config.waypoints.enabled : index == 16 ? config.coordinates.enabled : index == 15 ? config.storageEsp.enabled : index == 14 ? config.staffDetector.enabled : index == 13 ? config.blockEsp.enabled : index == 12 ? config.soundDetector.enabled : index == 11 ? config.lightDebug.enabled : index == 10 ? config.amethyst.enabled : index == 9 ? config.hotbar.enabled : index == 8 ? config.nameHider.enabled : index == 7 ? config.progressBar.enabled : index == 6 ? FlyController.enabled() : index == 5 ? config.fullbright.enabled : index == 4 ? config.chunkFinder.enabled : index == 3 ? AutoBuilderController.get().isRunning() : index == 2 ? config.freecam.enabled : false; }
-    private boolean favorite(int index) { return index == 28 ? config.autoEat.favorite : index == 27 ? config.autoReconnect.favorite : index == 26 ? config.stashFinder.favorite : index == 25 ? config.newChunks.favorite : index == 24 ? config.hudWidgets.favorite : index == 23 ? config.search.favorite : index == 22 ? config.playerEsp.favorite : index == 21 ? config.freelook.favorite : index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
+    private boolean favorite(int index) { return index == 29 ? config.structureFinder.favorite : index == 28 ? config.autoEat.favorite : index == 27 ? config.autoReconnect.favorite : index == 26 ? config.stashFinder.favorite : index == 25 ? config.newChunks.favorite : index == 24 ? config.hudWidgets.favorite : index == 23 ? config.search.favorite : index == 22 ? config.playerEsp.favorite : index == 21 ? config.freelook.favorite : index == 20 ? config.autoMiner.favorite : index == 19 ? config.durabilityAlert.favorite : index == 18 ? config.zoom.favorite : index == 17 ? config.waypoints.favorite : index == 16 ? config.coordinates.favorite : index == 15 ? config.storageEsp.favorite : index == 14 ? config.staffDetector.favorite : index == 13 ? config.blockEsp.favorite : index == 12 ? config.soundDetector.favorite : index == 11 ? config.lightDebug.favorite : index == 10 ? config.amethyst.favorite : index == 9 ? config.hotbar.favorite : index == 8 ? config.nameHider.favorite : index == 7 ? config.progressBar.favorite : index == 6 ? config.fly.favorite : index == 5 ? config.fullbright.favorite : index == 4 ? config.chunkFinder.favorite : index == 3 ? config.autoBuilder.favorite : index == 2 ? config.freecam.favorite : false; }
     private void toggleFavorite(int index) {
         if (index == 28) config.autoEat.favorite = !config.autoEat.favorite;
         else if (index == 27) config.autoReconnect.favorite = !config.autoReconnect.favorite;
@@ -831,6 +853,7 @@ public final class DonutScreen extends Screen {
         else if (index == 5) config.fullbright.favorite = !config.fullbright.favorite;
         else if (index == 4) config.chunkFinder.favorite = !config.chunkFinder.favorite;
         else if (index == 3) config.autoBuilder.favorite = !config.autoBuilder.favorite;
+        else if (index == 29) config.structureFinder.favorite = !config.structureFinder.favorite;
         else if (index == 2) config.freecam.favorite = !config.freecam.favorite;
         if (tab == 1) contentProgress = 0;
     }
@@ -900,12 +923,15 @@ public final class DonutScreen extends Screen {
             if (AutoBuilderController.get().isRunning()) AutoBuilderController.get().pause();
             flush();
             minecraft.setScreen(new AutoBuilderScreen(this, config, save));
+        } else if (index == 29) {
+            flush();
+            minecraft.setScreen(new StructureFinderScreen(this, config, save));
         } else if (index == 2) {
             if (config.freecam.enabled || canUseFreecam()) config.freecam.enabled = !config.freecam.enabled;
         }
     }
     private String name(int index) {
-        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; case 21 -> "Freelook"; case 22 -> "Player ESP"; case 23 -> "Search"; case 24 -> "HUD Widgets"; case 25 -> "NewChunks"; case 26 -> "Stash Finder"; case 27 -> "Auto Reconnect"; case 28 -> "Auto Eat"; default -> "AutoBuilder"; };
+        return switch (index) { case 2 -> "Freecam"; case 4 -> "Base Finder"; case 5 -> "Fullbright"; case 6 -> "Fly"; case 7 -> "Progress Bar"; case 8 -> "Name Hider"; case 9 -> "Hotbar"; case 10 -> "Amethyst Scanner"; case 11 -> "Light Debug"; case 12 -> "Sound Detector"; case 13 -> "BlockESP"; case 14 -> "Staff Detector"; case 15 -> "Storage ESP"; case 16 -> "Coordinates"; case 17 -> "Waypoints"; case 18 -> "Zoom"; case 19 -> "Durability Alert"; case 20 -> "Auto Miner"; case 21 -> "Freelook"; case 22 -> "Player ESP"; case 23 -> "Search"; case 24 -> "HUD Widgets"; case 25 -> "NewChunks"; case 26 -> "Stash Finder"; case 27 -> "Auto Reconnect"; case 28 -> "Auto Eat"; case 29 -> "Seed Finder"; default -> "AutoBuilder"; };
     }
 
     private void drawHotbarSettings(GuiGraphics g, int ignored) {

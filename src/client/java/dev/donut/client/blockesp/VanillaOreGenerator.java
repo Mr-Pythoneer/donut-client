@@ -119,6 +119,15 @@ public final class VanillaOreGenerator implements AutoCloseable {
         }
     }
 
+    /** Finds structures from this world's seed with the game's own placement/biome logic. Worker-thread only. */
+    public dev.donut.client.structurefinder.StructureSearch.Results findStructures(
+            dev.donut.client.structurefinder.StructureSearch.Query query,
+            dev.donut.client.structurefinder.StructureSearch.Progress progress) {
+        checkOwner();
+        if (closed) throw new IllegalStateException("Generator is closed");
+        return dev.donut.client.structurefinder.StructureSearch.run(server, query, progress);
+    }
+
     /** Generates the chunk to FULL status and scans it for the exact targets in {@code mask}. */
     public ChunkScan predict(int chunkX, int chunkZ, int mask) {
         checkOwner();

@@ -15,7 +15,7 @@ public final class ModuleKeybinds {
     // every loop over FIRST_MODULE..MODULE_LIMIT must skip an ID whose mapping(id) is null.
     public static final int FIRST_MODULE = 2;
     /** Slots for IDs 2..28. Some IDs may have no module (no mapping); every caller must tolerate gaps. */
-    public static final int MODULE_COUNT = 27;
+    public static final int MODULE_COUNT = 28;
     public static final int MODULE_LIMIT = FIRST_MODULE + MODULE_COUNT;
     private static final KeyMapping[] MODULES = new KeyMapping[MODULE_LIMIT];
     private static final boolean[] pressed = new boolean[MODULE_LIMIT];
