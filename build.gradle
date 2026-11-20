@@ -259,7 +259,10 @@ java {
     withSourcesJar()
 }
 
-jar { from('LICENSE') { rename { "${it}_${project.base.archivesName.get()}" } } }
+jar {
+    from('LICENSE') { rename { "${it}_${project.base.archivesName.get()}" } }
+    from('AUTHORS.md')
+}
 
 // Client gametest JVM options: the probe joins a real server whose plugins rewrite packets, which Fabric's
 // network synchronizer cannot follow; and the kill-switch clock lives in the run directory, not in ~/.donut-client.
